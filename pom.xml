@@ -163,7 +163,7 @@
 						</systemProperty>
 						<systemProperty>
 							<name>LD_LIBRARY_PATH</name>
-							<value>${LD_LIBRARY_PATH}</value>
+							<value>${project.basedir}/${LD_LIBRARY_PATH}</value>
 						</systemProperty>
 						<systemProperty>
 							<name>DYLD_LIBRARY_PATH</name>
@@ -265,12 +265,12 @@
 	<!-- Below's can be overridden in ${MAVEN_HOME}/conf/settings.xml -->
 	<properties>
 		<djatoka.ingest.exts>tiff,tif</djatoka.ingest.exts>
-		<djatoka.ingest.data>${project.basedir}/src/test/resources/images</djatoka.ingest.data>
-		<djatoka.jp2.data>${project.basedir}/target/images</djatoka.jp2.data>
+		<djatoka.ingest.data>src/test/resources/images</djatoka.ingest.data>
+		<djatoka.jp2.data>target/images</djatoka.jp2.data>
 		<!-- The cache the OpenURL system uses when it creates an object -->
-		<openurl.cache.dir>${project.basedir}/target/tmpcache</openurl.cache.dir>
+		<openurl.cache.dir>target/tmpcache</openurl.cache.dir>
 		<!-- Separate cache used for the pairtree storage system -->
-		<djatoka.view.cache>${project.basedir}/target/cache</djatoka.view.cache>
+		<djatoka.view.cache>target/cache</djatoka.view.cache>
 		<!-- Max TIFF file size for ingest (always specified in MB) -->
 		<djatoka.ingest.maxSize>900</djatoka.ingest.maxSize>
 		<!-- <referent.resolver>gov.lanl.adore.djatoka.openurl.SimpleListResolver</referent.resolver> -->
@@ -291,7 +291,7 @@
 				</os>
 			</activation>
 			<properties>
-				<LD_LIBRARY_PATH>${project.basedir}/lib/Linux-x86-32</LD_LIBRARY_PATH>
+				<LD_LIBRARY_PATH>lib/Linux-x86-32</LD_LIBRARY_PATH>
 			</properties>
 		</profile>
 		<profile>
@@ -303,7 +303,7 @@
 				</os>
 			</activation>
 			<properties>
-				<LD_LIBRARY_PATH>${project.basedir}/lib/Linux-x86-64</LD_LIBRARY_PATH>
+				<LD_LIBRARY_PATH>lib/Linux-x86-64</LD_LIBRARY_PATH>
 				<!-- example of overridding a default property -->
 				<!-- <djatoka.data>/usr/local/data/images</djatoka.data> -->
 			</properties>
@@ -328,7 +328,7 @@
 				</os>
 			</activation>
 			<properties>
-				<LD_LIBRARY_PATH>${project.basedir}/lib/Win32</LD_LIBRARY_PATH>
+				<LD_LIBRARY_PATH>lib/Win32</LD_LIBRARY_PATH>
 			</properties>
 		</profile>
 		<profile>
@@ -340,7 +340,7 @@
 				</os>
 			</activation>
 			<properties>
-				<LD_LIBRARY_PATH>${project.basedir}/lib/Solaris-x86</LD_LIBRARY_PATH>
+				<LD_LIBRARY_PATH>lib/Solaris-x86</LD_LIBRARY_PATH>
 			</properties>
 		</profile>
 		<profile>
@@ -352,7 +352,7 @@
 				</os>
 			</activation>
 			<properties>
-				<LD_LIBRARY_PATH>${project.basedir}/lib/Solaris-Sparc</LD_LIBRARY_PATH>
+				<LD_LIBRARY_PATH>lib/Solaris-Sparc</LD_LIBRARY_PATH>
 			</properties>
 		</profile>
 		<profile>
@@ -364,7 +364,7 @@
 				</os>
 			</activation>
 			<properties>
-				<LD_LIBRARY_PATH>${project.basedir}/lib/Solaris-Sparcv9</LD_LIBRARY_PATH>
+				<LD_LIBRARY_PATH>lib/Solaris-Sparcv9</LD_LIBRARY_PATH>
 			</properties>
 		</profile>
 	</profiles>
