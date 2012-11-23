@@ -59,6 +59,8 @@
     <logger name="gov.lanl.adore.djatoka.openurl.OpenURLJP2KService" level="ERROR"/>
     <logger name="gov.lanl.adore.djatoka.kdu.KduCompressExe" level="ERROR"/>
 
+    <logger name="info.freelibrary.iiif" level="DEBUG"/>
+    
     <root level="ERROR">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="MAINLOG"/>
