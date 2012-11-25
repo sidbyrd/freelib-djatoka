@@ -19,9 +19,11 @@ import gov.lanl.util.AccessManager;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.net.SocketException;
 import java.net.URL;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -71,6 +73,21 @@ public class OpenURLServlet extends HttpServlet {
 	    ClassLoader cl = OpenURLServlet.class.getClassLoader();
 	    java.net.URL url = cl.getResource("access.txt");
 	    if (url != null) am = new AccessManager(url.getFile());
+
+	    // A clever hack that allows 'java.library.path' to be set after the
+	 	// application has already started (not supposed to be possible!)
+	 	// http://blog.cedarsoft.com/2010/11/setting-java-library-path-programmatically/
+//	    try {
+//	    	String jlp = System.getProperty("java.library.path");
+//	    	Field fieldSysPath = cl.getClass().getDeclaredField("sys_paths");
+//	    	fieldSysPath.setAccessible(true);
+//			fieldSysPath.set(null, null);
+//		}
+//		catch (Exception details) {
+//			if (LOGGER.isWarnEnabled()) {
+//				LOGGER.warn("Failed to set java.library.path through hack");
+//			}
+//		}
 
 	}
 	catch (Exception e) {

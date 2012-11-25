@@ -42,6 +42,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
 
@@ -447,6 +448,20 @@ public class KduExtractExe implements IExtract {
 		    System.getProperty("java.library.path"));
 	}
 
+    // A clever hack that allows 'java.library.path' to be set after the
+ 	// application has already started (not supposed to be possible!)
+ 	// http://blog.cedarsoft.com/2010/11/setting-java-library-path-programmatically/
+//    try {
+//    	Field fieldSysPath = ClassLoader.class.getClass().getDeclaredField("sys_paths");
+//    	fieldSysPath.setAccessible(true);
+//		fieldSysPath.set(null, null);
+//	}
+//	catch (Exception details) {
+//		if (LOGGER.isWarnEnabled()) {
+//			LOGGER.warn("Failed to set java.library.path through hack", details);
+//		}
+//	}
+	
 	Jpx_source inputSource = new Jpx_source();
 	Jp2_family_src jp2_family_in = new Jp2_family_src();
 

@@ -37,16 +37,16 @@
         </encoder>
     </appender>
 
-    <logger name="info.freelibrary.djatoka.view.IdentifierResolver" level="ERROR"/>
+<!--     <logger name="info.freelibrary.djatoka.view.IdentifierResolver" level="ERROR"/>
     <logger name="info.freelibrary.djatoka.view.ImageServlet" level="ERROR"/>
     <logger name="info.freelibrary.djatoka.view.ViewServlet" level="ERROR"/>
     <logger name="info.freelibrary.djatoka.util.HealthServlet" level="ERROR"/>
 
     <logger name="info.freelibrary.util.PairtreeObject" level="ERROR"/>
     <logger name="info.freelibrary.util.PairtreeRoot" level="ERROR"/>
-    <logger name="info.freelibrary.util.FileUtils" level="ERROR"/>
+    <logger name="info.freelibrary.util.FileUtils" level="ERROR"/> -->
     
-    <logger name="info.freelibrary.djatoka.ingest" level="ERROR">
+    <logger name="info.freelibrary.djatoka.ingest" level="DEBUG">
         <appender-ref ref="FILEOUT"/>
     </logger>
 
@@ -54,14 +54,14 @@
         <appender-ref ref="CACHER"/>
     </logger>
 
-    <logger name="gov.lanl.adore.djatoka.openurl.TileCacheManager" level="ERROR"/>
+<!--     <logger name="gov.lanl.adore.djatoka.openurl.TileCacheManager" level="ERROR"/>
     <logger name="gov.lanl.adore.djatoka.openurl.OpenURLServlet" level="ERROR"/>
-    <logger name="gov.lanl.adore.djatoka.openurl.OpenURLJP2KService" level="ERROR"/>
-    <logger name="gov.lanl.adore.djatoka.kdu.KduCompressExe" level="ERROR"/>
+    <logger name="gov.lanl.adore.djatoka.openurl.OpenURLJP2KService" level="ERROR"/> -->
+    <logger name="gov.lanl.adore.djatoka.kdu.KduCompressExe" level="DEBUG"/>
 
     <logger name="info.freelibrary.iiif" level="DEBUG"/>
     
-    <root level="ERROR">
+    <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="MAINLOG"/>
     </root>
