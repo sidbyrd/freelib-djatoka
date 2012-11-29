@@ -12,8 +12,8 @@
 
     <modules>
         <module>djatoka</module>
-<!--        <module>server</module>
-        <module>openjpeg</module>-->
+        <module>server</module>
+        <module>openjpeg</module>
     </modules>
 
     <build>
