@@ -1,0 +1,18 @@
+=================================================================================
+  Freelib Djatoka Image Server
+=================================================================================
+
+  The FreeLib Djatoka Image Server is a fork of the aDORe-djatoka image server.
+The original fork (which attempted to simplify the use of Djatoka) is still
+available as an independent module within this project (it's called 'djatoka'
+and has its own README), but a substantial revision of the project and its
+structure is underway.  Until this revision reaches a point of stability, I'd
+recommend you investigate the master branch (not, this, the 'develop' branch).
+
+
+=================================================================================
+  Contact
+=================================================================================
+
+Kevin S. Clarke <ksclarke@gmail.com>
+
