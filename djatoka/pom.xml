@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<parent>
-	    <groupId>info.freelibrary</groupId>
+		<groupId>info.freelibrary</groupId>
 		<artifactId>freelib-djatoka</artifactId>
 		<version>1.1.1-SNAPSHOT</version>
 	</parent>
@@ -10,7 +10,7 @@
 	<groupId>info.freelibrary</groupId>
 	<artifactId>djatoka</artifactId>
 	<version>1.1.1-SNAPSHOT</version>
-	<name>FreeLibrary Djatoka</name>
+	<name>FreeLib Djatoka (Fork of aDORe-djatoka)</name>
 	<packaging>war</packaging>
 	<description>A repackaging of aDORe-Djatoka to work with Maven/Jetty</description>
 	<inceptionYear>20110701</inceptionYear>
