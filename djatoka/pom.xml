@@ -8,7 +8,7 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.freelibrary</groupId>
-	<artifactId>djatoka</artifactId>
+	<artifactId>djatoka-fork</artifactId>
 	<version>1.1.1-SNAPSHOT</version>
 	<name>FreeLib Djatoka (Fork of aDORe-djatoka)</name>
 	<packaging>war</packaging>
