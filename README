@@ -26,7 +26,7 @@ latest version of the code by typing:
 
 The above references a "develop" branch instead of "master" just because that's
 where my changes to OpenJPEG are (with "master" being the clean upstream).  In
-most other cases, you'd probably want to reference the "master" branch.
+most other cases, you'd probably want to reference the "master" branch in above.
 
 
 =================================================================================
