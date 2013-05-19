@@ -1,42 +1,5 @@
-=================================================================================
-  Freelib Djatoka Image Server
-=================================================================================
+================================================================================
+  FreeLib-Djatoka Image Server
+================================================================================
 
-The FreeLib Djatoka Image Server is a fork of the aDORe-djatoka image server.
-The original fork (which attempted to simplify the use of Djatoka) is still
-available, as an independent module within this project (it's called 'djatoka'
-and has its own README), but a substantial revision of the project and its
-structure is underway.  Until this revision reaches a point of stability, I'd
-recommend you investigate the master branch (not, this, the "develop" branch).
-
-
-=================================================================================
-  Working with Git's Submodules
-=================================================================================
-
-The new version of this project uses git submodules to pull in the OpenJPEG
-project.  Once you've cloned this repository and checked out the "develop"
-branch, you'll need to run the following commands (before the OpenJPEG code
-will be pulled in):
-
-  git submodule init
-  git submodule update
-
-I mention this mostly as a reminder to myself because I'm new to git submodules
-and will probably forget it.  With a submodule, the developer can update to the
-latest version of the code by typing (from the project's root directory):
-
-  git submodule foreach git pull origin develop
-  git commit -am 'Updated <module_name> to latest version'
-
-The above references a "develop" branch instead of "master" just because that's
-where my changes to OpenJPEG are (with "master" being the clean upstream).  In
-most other cases, you'd probably want to reference the "master" branch in above.
-
-
-=================================================================================
-  Contact
-=================================================================================
-
-Kevin S. Clarke <ksclarke@gmail.com>
-
+<Placeholder>
