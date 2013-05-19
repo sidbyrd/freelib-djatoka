@@ -1,3 +1,0 @@
-[submodule "openjpeg"]
-    path = openjpeg
-    url = git@github.com:ksclarke/openjpeg.git
