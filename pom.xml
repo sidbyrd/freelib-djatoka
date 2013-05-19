@@ -1,19 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-	<parent>
-	    <groupId>info.freelibrary</groupId>
-		<artifactId>freelib-djatoka</artifactId>
-		<version>0.0.1-SNAPSHOT</version>
-	</parent>
-    
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>info.freelibrary</groupId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>FreeLib Djatoka Image Server</name>
-	<artifactId>freelib-djatoka-server</artifactId>
+	<artifactId>freelib-djatoka</artifactId>
 	<packaging>war</packaging>
-	<description>The FreeLibrary Djatoka Image Server</description>
+	<description>FreeLib-Djatoka Image Server</description>
 
 	<licenses>
 		<license>
@@ -159,36 +153,6 @@
 				</configuration>
 			</plugin>
 		</plugins>
-		<pluginManagement>
-			<plugins>
-				<!--Used to store m2e settings only; Maven ignores it. -->
-				<plugin>
-					<groupId>org.eclipse.m2e</groupId>
-					<artifactId>lifecycle-mapping</artifactId>
-					<version>1.0.0</version>
-					<configuration>
-						<lifecycleMappingMetadata>
-							<pluginExecutions>
-								<pluginExecution>
-									<pluginExecutionFilter>
-										<groupId>org.codehaus.mojo</groupId>
-										<artifactId>keytool-maven-plugin</artifactId>
-										<versionRange>[1.2,)</versionRange>
-										<goals>
-											<goal>clean</goal>
-											<goal>generateKeyPair</goal>
-										</goals>
-									</pluginExecutionFilter>
-									<action>
-										<execute />
-									</action>
-								</pluginExecution>
-							</pluginExecutions>
-						</lifecycleMappingMetadata>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 	</build>
 
 	<repositories>
