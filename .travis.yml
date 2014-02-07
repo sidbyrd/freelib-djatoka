@@ -1,0 +1,28 @@
+language: java
+
+jdk:
+  - openjdk7
+  - oraclejdk7
+
+branches:
+  only:
+    - 2.x
+
+install: "mvn -DskipTests=true install"
+
+before_script: "cp src/main/resources/sample-settings.xml ${HOME}/.m2/settings.xml"
+
+script:
+  - mvn install
+
+notifications:
+  email:
+    recipients:
+      - ksclarke@gmail.com
+    on_failure: change
+    on_success: change
+  irc:
+    channels:
+      - irc.freenode.org#freelibrary
+    on_failure: always
+    on_success: always
