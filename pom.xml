@@ -160,18 +160,18 @@
       <version>${jetty.version}</version>
     </dependency>
     <dependency>
+	    <!-- mvn org.apache.maven.plugins:maven-install-plugin:2.3.1:install-file -Dfile=lib/kdu_jni.jar -DgroupId=kdu -DartifactId=kdu_jni -Dversion=0.0.0 -Dpackaging=jar -DlocalRepositoryPath=`pwd`/repo/ -->
       <groupId>kdu</groupId>
       <artifactId>kdu_jni</artifactId>
       <version>0.0.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/lib/kdu_jni.jar</systemPath>
+      <scope>compile</scope>
     </dependency>
     <dependency>
+	    <!-- mvn org.apache.maven.plugins:maven-install-plugin:2.3.1:install-file -Dfile=lib/ij-ImageIO.jar -DgroupId=imagej -DartifactId=ij-ImageIO -Dversion=0.0.0 -Dpackaging=jar -DlocalRepositoryPath=`pwd`/repo/ -->
       <groupId>imagej</groupId>
       <artifactId>ij-ImageIO</artifactId>
       <version>0.0.0</version>
-      <scope>system</scope>
-      <systemPath>${project.basedir}/lib/ij-ImageIO.jar</systemPath>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.imgscalr</groupId>
@@ -623,7 +623,7 @@
         </dependencies>
         <configuration>
           <!-- Putting JVM args in CDATA to prevent wrapping -->
-          <jvmArgs><![CDATA[-Djetty.port=${jetty.port} -Dkakadu.home=${LD_LIBRARY_PATH} -Djava.library.path=${LD_LIBRARY_PATH} -DDJATOKA_HOME=${basedir} -DLD_LIBRARY_PATH=${LD_LIBRARY_PATH} -DDYLD_LIBRARY_PATH=${basedir}/${DYLD_LIBRARY_PATH}]]></jvmArgs>
+          <jvmArgs><![CDATA[-Djetty.port=${jetty.port} -Dkakadu.home=${basedir}/${LD_LIBRARY_PATH} -Djava.library.path=${LD_LIBRARY_PATH} -DDJATOKA_HOME=${basedir} -DLD_LIBRARY_PATH=${LD_LIBRARY_PATH} -DDYLD_LIBRARY_PATH=${basedir}/${DYLD_LIBRARY_PATH}]]></jvmArgs>
           <stopKey>${jetty.stop.key}</stopKey>
           <stopPort>8993</stopPort>
           <scanIntervalSeconds>0</scanIntervalSeconds>
@@ -885,6 +885,10 @@
         <updatePolicy>always</updatePolicy>
       </snapshots>
     </repository>
+	<repository>
+		<id>localfile</id>
+		<url>file://${basedir}/repo</url>
+	</repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
