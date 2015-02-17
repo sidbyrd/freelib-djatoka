@@ -19,3 +19,4 @@ jetty-memory.*
 
 freelib-djatoka.ipr
 freelib-djatoka.iml
+target/*
