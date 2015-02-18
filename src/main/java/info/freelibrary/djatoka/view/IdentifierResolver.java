@@ -1,6 +1,21 @@
 
 package info.freelibrary.djatoka.view;
 
+import gov.lanl.adore.djatoka.openurl.DjatokaImageMigrator;
+import gov.lanl.adore.djatoka.openurl.IReferentMigrator;
+import gov.lanl.adore.djatoka.openurl.IReferentResolver;
+import gov.lanl.adore.djatoka.openurl.ResolverException;
+import gov.lanl.adore.djatoka.util.ImageRecord;
+import info.freelibrary.djatoka.Constants;
+import info.freelibrary.util.PairtreeObject;
+import info.freelibrary.util.PairtreeRoot;
+import info.freelibrary.util.PairtreeUtils;
+import info.freelibrary.util.StringUtils;
+import info.openurl.oom.entities.Referent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -14,25 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import gov.lanl.adore.djatoka.openurl.DjatokaImageMigrator;
-import gov.lanl.adore.djatoka.openurl.IReferentMigrator;
-import gov.lanl.adore.djatoka.openurl.IReferentResolver;
-import gov.lanl.adore.djatoka.openurl.ResolverException;
-import gov.lanl.adore.djatoka.util.ImageRecord;
-
-import info.freelibrary.djatoka.Constants;
-import info.freelibrary.util.PairtreeObject;
-import info.freelibrary.util.PairtreeRoot;
-import info.freelibrary.util.PairtreeUtils;
-import info.freelibrary.util.StringUtils;
-
-import info.openurl.oom.entities.Referent;
 
 public class IdentifierResolver implements IReferentResolver, Constants {
 
@@ -56,51 +52,43 @@ public class IdentifierResolver implements IReferentResolver, Constants {
      */
     @Override
     public ImageRecord getImageRecord(final String aRequest) throws ResolverException {
-        final String decodedRequest = decode(aRequest);
-        ImageRecord image;
+        String decodedRequest = decode(aRequest);
 
-        // Check to see if the image is resolvable from a remote source
-        if (isResolvableURI(decodedRequest)) {
-            String referent;
+        // make sure id matches an allowed pattern
+	    for (String ingestSource : myIngestSources) {
+	        final Pattern pattern = Pattern.compile(ingestSource);
+	        final Matcher matcher = pattern.matcher(decodedRequest);
 
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Found a remotely resolvable ID: {}", decodedRequest);
-            }
+	        if (matcher.matches() && matcher.groupCount() > 0) {
+				// matched pattern may strip out non-id stuff here
+				decodedRequest = matcher.group(1);
 
-            // See if we can find a cacheable id from a URL pattern
-            try {
-                referent = parseReferent(decodedRequest);
-            } catch (final UnsupportedEncodingException details) {
-                throw new RuntimeException("JVM doesn't support UTF-8!!", details);
-            }
+				// if we already have the id, easy.
+				ImageRecord image = getCachedImage(decodedRequest);
+		        if (image != null) {
+			        return image;
+		        }
 
-            // Check and see if we've already put it in the Pairtree FS
-            image = getCachedImage(referent);
+				// make id into a URL
+				for (String urlPattern : myIngestGuesses) {
+					final String url = StringUtils.format(urlPattern, decodedRequest);
 
-            // Otherwise, we retrieve the image from the remote source
-            if (image == null) {
-                image = getRemoteImage(referent, decodedRequest);
-            }
-        } else {
-            image = getCachedImage(decodedRequest);
+					if (LOGGER.isDebugEnabled()) {
+						LOGGER.debug("Trying to resolve using URL pattern: {}", url);
+					}
 
-            // If we can't find the "non-remote" image in our local cache,
-            // make one last ditch attempt to find it as a remote image...
-            if (image == null) {
-                for (int index = 0; index < myIngestGuesses.size(); index++) {
-                    final String urlPattern = myIngestGuesses.get(index);
-                    final String url = StringUtils.format(urlPattern, decodedRequest);
+					// fetch it. If it works, we're done.
+					image = getRemoteImage(decodedRequest, url);
+					if (image != null) {
+						return image;
+					}
+				}
+	        } else if (LOGGER.isDebugEnabled()) {
+	            LOGGER.debug("No Match in {} for {}", pattern.toString(), decodedRequest);
+	        }
+	    }
 
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Trying to resolve using URL pattern: {}", url);
-                    }
-
-                    image = getRemoteImage(decodedRequest, url);
-                }
-            }
-        }
-
-        return image;
+	    return null;
     }
 
     /**
@@ -167,16 +155,8 @@ public class IdentifierResolver implements IReferentResolver, Constants {
         myIngestGuesses.addAll(Arrays.asList(guesses.split("\\s+")));
     }
 
-    private boolean isResolvableURI(final String aReferentID) {
-        return aReferentID.startsWith("http://") || aReferentID.startsWith("file://");
-    }
-
     private ImageRecord getCachedImage(final String aReferentID) {
         ImageRecord image = null;
-
-        if (isResolvableURI(aReferentID)) {
-            return image;
-        }
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Checking in Pairtree file system for: {}", aReferentID);
@@ -257,28 +237,6 @@ public class IdentifierResolver implements IReferentResolver, Constants {
         }
 
         return image;
-    }
-
-    private String parseReferent(final String aReferent) throws UnsupportedEncodingException {
-        for (int index = 0; index < myIngestSources.size(); index++) {
-            final Pattern pattern = Pattern.compile(myIngestSources.get(index));
-            final Matcher matcher = pattern.matcher(aReferent);
-
-            // If we have a parsable ID, let's use that instead of URI
-            if (matcher.matches() && matcher.groupCount() > 0) {
-                final String referent = URLDecoder.decode(matcher.group(1), "UTF-8");
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("ID '{}' extracted from a known pattern", referent);
-                }
-
-                return referent;
-            } else if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("No Match in {} for {}", pattern.toString(), aReferent);
-            }
-        }
-
-        return aReferent;
     }
 
     private String decode(final String aRequest) {

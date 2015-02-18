@@ -1,17 +1,18 @@
 
 package info.freelibrary.djatoka.view;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.util.Properties;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.lanl.adore.djatoka.openurl.OpenURLJP2KService;
+import info.freelibrary.djatoka.Constants;
+import info.freelibrary.djatoka.iiif.IIIFRequest;
+import info.freelibrary.djatoka.iiif.ImageRequest;
+import info.freelibrary.djatoka.iiif.Region;
+import info.freelibrary.djatoka.util.CacheUtils;
+import info.freelibrary.util.*;
+import nu.xom.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.IIOException;
 import javax.servlet.RequestDispatcher;
@@ -22,33 +23,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-
-import nu.xom.Attribute;
-import nu.xom.Builder;
-import nu.xom.Document;
-import nu.xom.Element;
-import nu.xom.ParsingException;
-import nu.xom.Serializer;
-import nu.xom.ValidityException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import gov.lanl.adore.djatoka.openurl.OpenURLJP2KService;
-
-import info.freelibrary.djatoka.Constants;
-import info.freelibrary.djatoka.iiif.IIIFRequest;
-import info.freelibrary.djatoka.iiif.ImageRequest;
-import info.freelibrary.djatoka.iiif.Region;
-import info.freelibrary.djatoka.util.CacheUtils;
-import info.freelibrary.util.IOUtils;
-import info.freelibrary.util.PairtreeObject;
-import info.freelibrary.util.PairtreeRoot;
-import info.freelibrary.util.PairtreeUtils;
-import info.freelibrary.util.StringUtils;
+import java.io.*;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.Properties;
 
 public class ImageServlet extends HttpServlet implements Constants {
 
@@ -493,26 +472,33 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
     }
 
-    private String getID(final String aPath) {
-        String path;
+    private String getID(String path) {
+	    // remove leading "/"
+		int startPos = (path.startsWith("/"))? 1 : 0;
 
-        if (aPath.startsWith("/")) {
-            path = aPath.split("/")[1].replace('+', ' ');
-        } else {
-            path = aPath;
-        }
+	    // remove trailing "/info.*"
+	    int endPos = path.lastIndexOf("/info.");
+	    if (endPos <= startPos) {
+			// or else remove trailing "/*/*/*/native.jpg"
+		    int count = 0;
+			for (endPos = path.lastIndexOf("/native.jpg"); endPos > startPos && count<3; count++) {
+				endPos = path.lastIndexOf("/", endPos-1);
+			}
+		    if (count != 3) {
+			    endPos = -1; // didn't find all three "/" before the final "/native.jpg".
+		    }
+	    }
+	    if (endPos > startPos) {
+		    path = path.substring(startPos, endPos);
+	    } else {
+		    LOGGER.warn("Couldn't understand path "+path);
+	    }
 
-        if (path.contains("%")) { // Path is URLEncoded
-            try {
-                path = URLDecoder.decode(path, "UTF-8");
-                path = URLDecoder.decode(path, "UTF-8");
-            } catch (final UnsupportedEncodingException details) {
-                // Never happens, all JVMs are required to support UTF-8
-                if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn("Couldn't decode path; no UTF-8 support");
-                }
-            }
-        }
+		try {
+			path = URLDecoder.decode(path, "UTF-8");
+		} catch (final UnsupportedEncodingException details) {
+			LOGGER.warn("Couldn't decode path; no UTF-8 support"); // Never happens, all JVMs are required to support UTF-8
+		}
 
         return path;
     }
