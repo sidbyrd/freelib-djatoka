@@ -7,6 +7,7 @@ import gov.lanl.adore.djatoka.openurl.OpenURLJP2KService;
 import info.freelibrary.djatoka.Constants;
 import info.freelibrary.djatoka.iiif.IIIFRequest;
 import info.freelibrary.djatoka.iiif.ImageRequest;
+import info.freelibrary.djatoka.iiif.InfoRequest;
 import info.freelibrary.djatoka.iiif.Region;
 import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.util.*;
@@ -25,7 +26,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.URL;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.Properties;
 
@@ -55,8 +55,6 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     private static final String CHARSET = "UTF-8";
 
-    private static String myFormatExt;
-
     private static String myCache;
 
     @Override
@@ -64,18 +62,25 @@ public class ImageServlet extends HttpServlet implements Constants {
             throws ServletException, IOException {
         String level = getServletConfig().getInitParameter("level");
         final IIIFRequest iiif = (IIIFRequest) aRequest.getAttribute(IIIFRequest.KEY);
-        final String reqURI = aRequest.getRequestURI();
-        final String servletPath = aRequest.getServletPath();
-        final String path = reqURI.substring(servletPath.length());
-        final String id = getID(path);
+	    if (iiif == null) {
+		    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "IIIF format required");
+	    }
 
-        if (reqURI.endsWith("/info.xml") || reqURI.endsWith("/info.json")) {
+	    String id = null;
+	    try {
+	        id = iiif.getIdentifier();
+	    } catch (NullPointerException e) { /**/ }
+	    if (id==null) {
+		    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "identifier required");
+	    }
+
+	    if (iiif instanceof InfoRequest) {
             try {
                 final int[] config = getHeightWidthAndLevels(aRequest, aResponse);
                 final ImageInfo info = new ImageInfo(id, config[0], config[1], config[2]);
                 final ServletOutputStream outStream = aResponse.getOutputStream();
 
-                if (reqURI.endsWith("/info.xml")) {
+                if (iiif.getExtension().equals("xml")) {
                     info.toStream(outStream);
                 } else {
                     final StringBuilder serviceSb = new StringBuilder();
@@ -96,7 +101,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             } catch (final FileNotFoundException details) {
                 aResponse.sendError(HttpServletResponse.SC_NOT_FOUND, id + " not found");
             }
-        } else if (iiif != null) {
+        } else if (iiif instanceof ImageRequest) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Request is handled via the IIIFRequest shim");
             }
@@ -132,51 +137,8 @@ public class ImageServlet extends HttpServlet implements Constants {
                 serveNewImage(id, level, region, size, rotation, aRequest, aResponse);
             }
         } else {
-            // We are using the now deprecated FreeLib-Djatoka djtilesource.js
-            final String[] regionCoords = getRegion(path);
-            final String scale = getScale(path);
-            String region;
-
-            if (level == null && scale == null) {
-                level = DEFAULT_VIEW_LEVEL;
-            }
-
-            if (regionCoords.length == 4) {
-                region = StringUtils.toString(regionCoords, ',');
-            } else {
-                region = "";
-            }
-
-            if (LOGGER.isDebugEnabled()) {
-                final StringBuilder request = new StringBuilder();
-
-                request.append("id[").append(id).append("] ");
-
-                if (level != null) {
-                    request.append("level[").append(level).append("] ");
-                }
-
-                if (scale != null) {
-                    request.append("scale[").append(scale).append("] ");
-                }
-
-                request.append("region[").append(region).append("]");
-
-                LOGGER.debug("Request: " + request.toString());
-            }
-
-            if (myCache != null) {
-                // Older freelib-djatoka didn't support rotations; use 0.0f
-                checkImageCache(id, level, scale, region, 0.0f, aRequest, aResponse);
-            } else {
-                if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn("Cache isn't configured correctly");
-                }
-
-                // Older freelib-djatoka didn't support rotations; use 0.0f
-                serveNewImage(id, level, region, scale, 0.0f, aRequest, aResponse);
-            }
-        }
+		    aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unrecognized IIIF message type");
+	    }
     }
 
     @Override
@@ -201,13 +163,6 @@ public class ImageServlet extends HttpServlet implements Constants {
                     LOGGER.debug("Cache directory set to {}", myCache);
                 }
 
-                if (props.containsKey(VIEW_FORMAT_EXT)) {
-                    myFormatExt = props.getProperty(VIEW_FORMAT_EXT, DEFAULT_VIEW_EXT);
-
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Format extension set to {}", myFormatExt);
-                    }
-                }
             } catch (final IOException details) {
                 if (LOGGER.isWarnEnabled()) {
                     LOGGER.warn("Unable to load properties file: {}", details.getMessage());
@@ -244,11 +199,20 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     private int[] getHeightWidthAndLevels(final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws IOException, ServletException {
-        final String reqURI = aRequest.getRequestURI();
-        final String servletPath = aRequest.getServletPath();
-        final String path = reqURI.substring(servletPath.length());
+	    final IIIFRequest iiif = (IIIFRequest) aRequest.getAttribute(IIIFRequest.KEY);
+		if (iiif == null) {
+			aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "IIIF format required");
+		}
+
+	    String id = null;
+	    try {
+	        id = iiif.getIdentifier();
+	    } catch (NullPointerException e) { /**/ }
+	    if (id==null) {
+		    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "identifier required");
+	    }
+
         int width = 0, height = 0, levels = 0;
-        final String id = getID(path);
 
         if (myCache != null) {
             OutputStream outStream = null;
@@ -359,8 +323,6 @@ public class ImageServlet extends HttpServlet implements Constants {
                         }
                     }
                 }
-            } catch (final ValidityException details) {
-                aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, details.getMessage());
             } catch (final ParsingException details) {
                 aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, details.getMessage());
             } finally {
@@ -470,81 +432,5 @@ public class ImageServlet extends HttpServlet implements Constants {
             LOGGER.warn("Couldn't cache ({} = {}); session lacked new image information", aKey, aDestFile
                     .getAbsolutePath());
         }
-    }
-
-    private String getID(String path) {
-	    // remove leading "/"
-		int startPos = (path.startsWith("/"))? 1 : 0;
-
-	    // remove trailing "/info.*"
-	    int endPos = path.lastIndexOf("/info.");
-	    if (endPos <= startPos) {
-			// or else remove trailing "/*/*/*/native.jpg"
-		    int count = 0;
-			for (endPos = path.lastIndexOf("/native.jpg"); endPos > startPos && count<3; count++) {
-				endPos = path.lastIndexOf("/", endPos-1);
-			}
-		    if (count != 3) {
-			    endPos = -1; // didn't find all three "/" before the final "/native.jpg".
-		    }
-	    }
-	    if (endPos > startPos) {
-		    path = path.substring(startPos, endPos);
-	    } else {
-		    LOGGER.warn("Couldn't understand path "+path);
-	    }
-
-		try {
-			path = URLDecoder.decode(path, "UTF-8");
-		} catch (final UnsupportedEncodingException details) {
-			LOGGER.warn("Couldn't decode path; no UTF-8 support"); // Never happens, all JVMs are required to support UTF-8
-		}
-
-        return path;
-    }
-
-    private String[] getRegion(final String aPathInfo) {
-        String[] coordArray = new String[] {};
-
-        if (aPathInfo.contains("/")) {
-            final String[] pathParts = aPathInfo.split("/");
-
-            if (pathParts.length > 2) {
-                final String coordsString = aPathInfo.split("/")[2];
-
-                if (!coordsString.equals("all") && !coordsString.equals("full")) {
-                    final String[] coords = coordsString.split(",");
-
-                    if (coords.length == 4) {
-                        coordArray = coords;
-                    } else if (LOGGER.isWarnEnabled()) {
-                        LOGGER.warn("Invalid coordinates ({}) requested in: {}", StringUtils.toString(coords, ','),
-                                aPathInfo);
-                        // TODO: throw exception?
-                    }
-                }
-            }
-        }
-
-        return coordArray;
-    }
-
-    private String getScale(final String aPathInfo) {
-        String scale = null;
-
-        if (aPathInfo.contains("/")) {
-            final String[] pathParts = aPathInfo.split("/");
-
-            if (pathParts.length > 3) {
-                scale = aPathInfo.split("/")[3];
-            }
-        }
-
-        if (scale != null && scale.startsWith("pct:")) {
-            scale = scale.substring(4);
-            scale = Double.toString(Double.parseDouble(scale) * .01);
-        }
-
-        return scale;
     }
 }
