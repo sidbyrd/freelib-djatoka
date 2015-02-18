@@ -603,27 +603,25 @@
             <groupId>kdu</groupId>
             <artifactId>kdu_jni</artifactId>
             <version>0.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/kdu_jni.jar</systemPath>
+            <scope>compile</scope>
           </dependency>
           <dependency>
             <groupId>imagej</groupId>
             <artifactId>ij-ImageIO</artifactId>
             <version>0.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/ij-ImageIO.jar</systemPath>
+            <scope>compile</scope>
           </dependency>
-          <dependency>
-            <groupId>imagej</groupId>
-            <artifactId>ij</artifactId>
-            <version>0.0.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/ij.jar</systemPath>
-          </dependency>
+	      <dependency>
+		      <!-- mvn org.apache.maven.plugins:maven-install-plugin:2.3.1:install-file -Dfile=lib/ij.jar -DgroupId=imagej -DartifactId=ij -Dversion=0.0.0 -Dpackaging=jar -DlocalRepositoryPath=`pwd`/repo/ -->
+	        <groupId>imagej</groupId>
+	        <artifactId>ij</artifactId>
+	        <version>0.0.0</version>
+	        <scope>compile</scope>
+	      </dependency>
         </dependencies>
         <configuration>
           <!-- Putting JVM args in CDATA to prevent wrapping -->
-          <jvmArgs><![CDATA[-Djetty.port=${jetty.port} -Dkakadu.home=${basedir}/${LD_LIBRARY_PATH} -Djava.library.path=${LD_LIBRARY_PATH} -DDJATOKA_HOME=${basedir} -DLD_LIBRARY_PATH=${LD_LIBRARY_PATH} -DDYLD_LIBRARY_PATH=${basedir}/${DYLD_LIBRARY_PATH}]]></jvmArgs>
+          <jvmArgs><![CDATA[-Djetty.port=${jetty.port} -Dkakadu.home=${LD_LIBRARY_PATH} -Djava.library.path=${LD_LIBRARY_PATH} -DDJATOKA_HOME=${basedir} -DLD_LIBRARY_PATH=${LD_LIBRARY_PATH} -DDYLD_LIBRARY_PATH=${basedir}/${DYLD_LIBRARY_PATH}]]></jvmArgs>
           <stopKey>${jetty.stop.key}</stopKey>
           <stopPort>8993</stopPort>
           <scanIntervalSeconds>0</scanIntervalSeconds>
@@ -734,7 +732,7 @@
       <properties>
         <!-- Include both b/c java.library.path is set to LD_LIBRARY_PATH -->
         <DYLD_LIBRARY_PATH>lib/Mac-x86</DYLD_LIBRARY_PATH>
-        <LD_LIBRARY_PATH>lib/Mac-x86</LD_LIBRARY_PATH>
+        <LD_LIBRARY_PATH>${project.basedir}/lib/Mac-x86</LD_LIBRARY_PATH>
       </properties>
     </profile>
     <profile>
@@ -885,10 +883,6 @@
         <updatePolicy>always</updatePolicy>
       </snapshots>
     </repository>
-	<repository>
-		<id>localfile</id>
-		<url>file://${basedir}/repo</url>
-	</repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
@@ -902,6 +896,10 @@
         <updatePolicy>always</updatePolicy>
       </snapshots>
     </pluginRepository>
+	  <pluginRepository>
+		  <id>localfile</id>
+		  <url>file://${project.basedir}/repo</url>
+	  </pluginRepository>
   </pluginRepositories>
   <!-- enables pushing the project documentation up to an S3 bucket -->
   <distributionManagement>
