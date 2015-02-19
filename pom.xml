@@ -80,9 +80,9 @@
       ^http://localhost:${jetty.port}/images/([a-z0-9A-Z\-]*).jp2$</djatoka.ingest.sources>
     <!-- List of image source guesses (used when ID can't be otherwise resolved) -->
     <djatoka.ingest.guesses>http://localhost/islandora/object/{}/datastream/JP2/view
-      http://localhost:${jetty.port}/images/{}.jp2</djatoka.ingest.guesses>
+           http://localhost:${jetty.port}/images/{}.jp2</djatoka.ingest.guesses>
 
-    <!-- The reasonable default is to not cache scale requests that aren't 1.0. Since pct:XX is so easy, though, we might 
+<!-- The reasonable default is to not cache scale requests that aren't 1.0. Since pct:XX is so easy, though, we might
       want exceptions for specific ones (for full images only); one possible use case is thumbnail creation. -->
     <djatoka.scale.cache.exceptions>0.15 0.10
       0.05</djatoka.scale.cache.exceptions>
@@ -883,6 +883,10 @@
         <updatePolicy>always</updatePolicy>
       </snapshots>
     </repository>
+	<repository>
+	  <id>localfile</id>
+	  <url>file://${project.basedir}/repo</url>
+	</repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>

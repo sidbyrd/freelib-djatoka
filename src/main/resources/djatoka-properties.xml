@@ -1,21 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
-  <entry key="djatoka.ingest.data.exts">${djatoka.ingest.exts}</entry>
-  <entry key="djatoka.ingest.data.dir">${djatoka.ingest.data}</entry>
-  <entry key="djatoka.ingest.file.maxSize">${djatoka.ingest.maxSize}</entry>
-  <entry key="djatoka.ingest.jp2.dir">${djatoka.jp2.data}</entry>
-  <entry key="djatoka.ingest.jp2.color.space">${djatoka.ingest.color.space}</entry>
-  <entry key="djatoka.view.cache.dir">${djatoka.view.cache}</entry>
+  <entry key="djatoka.ingest.data.exts">zyx</entry>
+  <entry key="djatoka.ingest.data.dir">/dev/null</entry>
+  <entry key="djatoka.ingest.file.maxSize">900</entry>
+  <entry key="djatoka.ingest.jp2.dir">/server/data/djatoka/jp2Cache</entry>
+  <entry key="djatoka.ingest.jp2.color.space">sRGB</entry>
+  <entry key="djatoka.view.cache.dir">/server/data/djatoka/tileCache</entry>
   <entry key="djatoka.view.format">image/jpeg</entry>
   <entry key="djatoka.view.format.ext">jpg</entry>
-  <entry key="djatoka.known.ingest.sources">${djatoka.ingest.sources}</entry>
-  <entry key="djatoka.known.ingest.guesses">${djatoka.ingest.guesses}</entry>
+  <entry key="djatoka.known.ingest.sources">^(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)$
+		    ^http[s]?://(?:scholarship|dspace|dspacedev|dspacetest).rice.edu/bitstream/handle/(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)*$</entry>
+  <entry key="djatoka.known.ingest.guesses">http://127.0.0.1:8080/bitstream/handle/{}</entry>
   <entry key="IdentifierResolver.checkDatabase">false</entry>
   <entry key="OpenURLJP2KService.referentResolverImpl">info.freelibrary.djatoka.view.IdentifierResolver</entry>
   <entry key="OpenURLJP2KService.cacheEnabled">true</entry>
-  <entry key="OpenURLJP2KService.scaleCacheExceptions">${djatoka.scale.cache.exceptions}</entry>
-  <entry key="OpenURLJP2KService.cacheTmpDir">${openurl.cache.dir}</entry>
+  <entry key="OpenURLJP2KService.scaleCacheExceptions">0.15 0.10 0.05</entry>
+  <entry key="OpenURLJP2KService.cacheTmpDir">/server/data/tomcat/temp/djatokaLRUCache</entry>
   <entry key="OpenURLJP2KService.cacheSize">1000</entry>
   <entry key="OpenURLJP2KService.cacheImageMaxPixels">100000</entry>
   <entry key="jpeg_writer">gov.lanl.adore.djatoka.io.writer.JPGWriter</entry>

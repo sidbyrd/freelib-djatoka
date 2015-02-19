@@ -2,56 +2,14 @@
 
 <configuration debug="false">
 
-  <!-- used with the djatoka maven plugins -->
-  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern><![CDATA[[%level] %d{HH:mm:ss.SSS} [ %C{5} , %M , %L ] %m %n]]></pattern>
-    </encoder>
-  </appender>
-
-  <appender name="INGEST"
-    class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>target/logs/ingest.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <FileNamePattern>target/logs/ingest.%d{yyyy-MM-dd}.log</FileNamePattern>
-    </rollingPolicy>
-    <encoder>
-      <pattern><![CDATA[[%level] %d{HH:mm:ss.SSS} [ %C{5} , %M , %L ] %m %n]]></pattern>
-    </encoder>
-  </appender>
-
   <appender name="DJATOKA"
     class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>target/logs/djatoka.log</file>
+    <file>/server/data/djatoka/log/djatoka-logback.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <FileNamePattern>target/logs/djatoka.%d{yyyy-MM-dd}.log</FileNamePattern>
+      <FileNamePattern>/server/data/djatoka/log/djatoka-logback.%d{yyyy-MM-dd}.log</FileNamePattern>
     </rollingPolicy>
     <encoder>
       <pattern><![CDATA[[%level] %d{HH:mm:ss.SSS} [ %C{5} , %M , %L ] %m %n]]></pattern>
-    </encoder>
-  </appender>
-
-  <appender name="CACHER"
-    class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>target/logs/tilecache.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <FileNamePattern>target/logs/tilecache.%d{yyyy-MM-dd}.log</FileNamePattern>
-    </rollingPolicy>
-    <encoder>
-      <pattern><![CDATA[[%level] %d{HH:mm:ss.SSS} [ %C{5} , %M , %L ] %m %n]]></pattern>
-    </encoder>
-  </appender>
-
-  <!-- Note location for LOGVIEWER is different so it's not watched/polled -->
-
-  <appender name="LOGVIEWER"
-    class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>target/tmp/logviewer.log</file>
-    <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <FileNamePattern>target/tmp/logviewer.%d{yyyy-MM-dd}.log</FileNamePattern>
-    </rollingPolicy>
-    <encoder>
-      <pattern><![CDATA[%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n]]></pattern>
     </encoder>
   </appender>
 
@@ -68,25 +26,7 @@
   <logger name="info.freelibrary.djatoka.util.DebugServletFilter" level="DEBUG"/>
   -->
 
-  <logger name="org.apache.maven" level="ERROR"/>
-
-  <!-- Some stuff still in early development -->
-  <logger name="info.freelibrary.djatoka.util.LogSocketServlet" level="DEBUG"
-    additivity="false">
-    <appender-ref ref="LOGVIEWER"/>
-  </logger>
-  <logger name="info.freelibrary.djatoka.util.LogSocket" level="DEBUG"
-    additivity="false">
-    <appender-ref ref="LOGVIEWER"/>
-  </logger>
-  <logger name="info.freelibrary.djatoka.util.LogWatcherThread" level="DEBUG"
-    additivity="false">
-    <appender-ref ref="LOGVIEWER"/>
-  </logger>
-  <!-- End of early development stuff -->
-
-  <!-- Log file for the file system ingest process -->
-  <logger name="info.freelibrary.djatoka.ingest" level="DEBUG"
+  <!-- <logger name="info.freelibrary.djatoka.ingest" level="DEBUG"
     additivity="false">
     <appender-ref ref="INGEST"/>
   </logger>
@@ -96,12 +36,11 @@
     <appender-ref ref="CONSOLE"/>
   </logger>
 
-  <!-- Log file for the pre-generating tile cache utility -->
   <logger name="info.freelibrary.djatoka.TileCache" level="DEBUG"
     additivity="false">
     <appender-ref ref="CACHER"/>
     <appender-ref ref="CONSOLE"/>
-  </logger>
+  </logger> -->
 
   <!-- Log file for everything else -->
   <root level="INFO">
