@@ -9,6 +9,7 @@
   <entry key="djatoka.view.cache.dir">/server/data/djatoka/tileCache</entry>
   <entry key="djatoka.view.format">image/jpeg</entry>
   <entry key="djatoka.view.format.ext">jpg</entry>
+  <entry key="djatoka.server.local">http://127.0.0.1:8080</entry>
   <entry key="djatoka.known.ingest.sources">^(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)$
 		    ^http[s]?://(?:scholarship|dspace|dspacedev|dspacetest).rice.edu/bitstream/handle/(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)*$</entry>
   <entry key="djatoka.known.ingest.guesses">http://127.0.0.1:8080/bitstream/handle/{}</entry>

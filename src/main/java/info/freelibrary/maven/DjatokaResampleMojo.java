@@ -1,20 +1,13 @@
 
 package info.freelibrary.maven;
 
-import java.awt.image.BufferedImage;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Properties;
-
-import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecuteResultHandler;
-import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteWatchdog;
-import org.apache.commons.exec.PumpStreamHandler;
+import gov.lanl.adore.djatoka.DjatokaEncodeParam;
+import gov.lanl.adore.djatoka.io.FormatIOException;
+import gov.lanl.adore.djatoka.io.reader.DjatokaReader;
+import gov.lanl.adore.djatoka.io.writer.TIFWriter;
+import gov.lanl.adore.djatoka.kdu.KduCompressExe;
+import info.freelibrary.djatoka.Constants;
+import org.apache.commons.exec.*;
 import org.apache.commons.exec.environment.EnvironmentUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -23,13 +16,10 @@ import org.imgscalr.Scalr;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import gov.lanl.adore.djatoka.DjatokaEncodeParam;
-import gov.lanl.adore.djatoka.io.FormatIOException;
-import gov.lanl.adore.djatoka.io.reader.DjatokaReader;
-import gov.lanl.adore.djatoka.io.writer.TIFWriter;
-import gov.lanl.adore.djatoka.kdu.KduCompressExe;
-
-import info.freelibrary.djatoka.Constants;
+import java.awt.image.BufferedImage;
+import java.io.*;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  * Resamples images for ingest in an attempt to reduce Moiré effects.
@@ -112,7 +102,9 @@ public class DjatokaResampleMojo extends DjatokaIngestMojo {
             } else {
                 return tmpJp2File;
             }
-        } catch (final IOException | FormatIOException details) {
+        } catch (final IOException details) {
+            throw new MojoExecutionException(details.getMessage(), details);
+        } catch (final FormatIOException details) {
             throw new MojoExecutionException(details.getMessage(), details);
         }
     }

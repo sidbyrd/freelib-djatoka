@@ -1,12 +1,10 @@
 
 package info.freelibrary.maven;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Arrays;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import info.freelibrary.djatoka.util.OSDCacheUtil;
+import info.freelibrary.util.*;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -14,15 +12,11 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import info.freelibrary.djatoka.util.OSDCacheUtil;
-import info.freelibrary.util.FileUtils;
-import info.freelibrary.util.PairtreeRoot;
-import info.freelibrary.util.PairtreeUtils;
-import info.freelibrary.util.RegexFileFilter;
-import info.freelibrary.util.StringUtils;
+import java.io.File;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Arrays;
 
 /**
  * Caches tiles for JP2s in FreeLib-Djatoka's Pairtree file system.
@@ -155,7 +149,9 @@ public class DjatokaTileMojo extends AbstractPairtreeMojo {
                     if (Runtime.getRuntime().exec(new String[] { "mvn", "jetty:stop" }).waitFor() != 0) {
                         throw new MojoExecutionException("Unable to stop the FreeLib-Djatoka server after tiling");
                     }
-                } catch (final IOException | InterruptedException details) {
+                } catch (final IOException details) {
+                    throw new MojoExecutionException(details.getMessage(), details);
+                } catch (final InterruptedException details) {
                     throw new MojoExecutionException(details.getMessage(), details);
                 }
             }

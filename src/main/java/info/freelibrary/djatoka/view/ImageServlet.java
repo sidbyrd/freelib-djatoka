@@ -27,6 +27,8 @@ import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.Enumeration;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 
 public class ImageServlet extends HttpServlet implements Constants {
@@ -40,14 +42,14 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final String METADATA_URL =
-            "http://{}:{}/resolve?url_ver=Z39.88-2004&rft_id={}&svc_id=info:lanl-repo/svc/getMetadata";
+    private static final String RESOLVE_METADATA_QUERY =
+            "?url_ver=Z39.88-2004&rft_id={}&svc_id=info:lanl-repo/svc/getMetadata";
 
-    private static final String IMAGE_URL = "/resolve?url_ver=Z39.88-2004&rft_id={}"
+    private static final String RESOLVE_IMAGE_QUERY = "?url_ver=Z39.88-2004&rft_id={}"
             + "&svc_id=info:lanl-repo/svc/getRegion" + "&svc_val_fmt=info:ofi/fmt:kev:mtx:jpeg2000"
             + "&svc.format={}&svc.level={}&svc.rotate={}";
 
-    private static final String REGION_URL = "/resolve?url_ver=Z39.88-2004&rft_id={}"
+    private static final String RESOLVE_REGION_QUERY = "?url_ver=Z39.88-2004&rft_id={}"
             + "&svc_id=info:lanl-repo/svc/getRegion" + "&svc_val_fmt=info:ofi/fmt:kev:mtx:jpeg2000"
             + "&svc.format={}&svc.region={}&svc.scale={}&svc.rotate={}";
 
@@ -56,6 +58,15 @@ public class ImageServlet extends HttpServlet implements Constants {
     private static final String CHARSET = "UTF-8";
 
     private static String myCache;
+
+    /** a URL that refers to the contained this webapp is running on, that does not have to be externally accessible.
+     * optional: leave null to just use the same URL that externally connecting clients use.
+     * Useful if e.g. externally visible on https://server.com, but internally also at http://localhost:8080 */
+    private static String localServer = null;
+    /** path this whole webapp is at, relative to server root */
+    private static String contextPath = null;
+    /** path the resolver servlet is at, relative to contextPath */
+    private static String resolverPath = null;
 
     @Override
     protected void doGet(final HttpServletRequest aRequest, final HttpServletResponse aResponse)
@@ -88,6 +99,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                     serviceSb.append(aRequest.getScheme()).append("://");
                     serviceSb.append(aRequest.getServerName()).append(":");
                     serviceSb.append(aRequest.getServerPort());
+                    serviceSb.append(contextPath);
 
                     final String service = serviceSb.toString();
                     final String prefix = iiif.getServicePrefix();
@@ -163,6 +175,9 @@ public class ImageServlet extends HttpServlet implements Constants {
                     LOGGER.debug("Cache directory set to {}", myCache);
                 }
 
+                if (props.containsKey(LOCAL_SERVER)) {
+                    localServer= props.getProperty(LOCAL_SERVER);
+                }
             } catch (final IOException details) {
                 if (LOGGER.isWarnEnabled()) {
                     LOGGER.warn("Unable to load properties file: {}", details.getMessage());
@@ -171,6 +186,22 @@ public class ImageServlet extends HttpServlet implements Constants {
                 IOUtils.closeQuietly(is);
             }
         }
+
+        try {
+            // get the base URL that this whole webapp is server at (relative to server root)
+            contextPath = getServletContext().getContextPath();
+            // get the (first) URL that the servlet named "resolver" (in web.xml) is served at, relative to contextPath
+            resolverPath = getServletContext().getServletRegistration("resolver").getMappings().iterator().next();
+        } catch (UnsupportedOperationException e) {
+            LOGGER.error("Unable to get servlet registration for 'resolver': {}", e.getMessage());
+        } catch (NoSuchElementException e) {
+            LOGGER.error("No registrations found for servlet 'resolver': {}", e.getMessage());
+        }
+        if (resolverPath == null) {
+            // didn't work? Shouldn't fail here, so just fake something.
+            resolverPath = "/resolver";
+        }
+        LOGGER.debug("IIIF server using resolver URL of {}", resolverPath);
     }
 
     @Override
@@ -279,14 +310,27 @@ public class ImageServlet extends HttpServlet implements Constants {
                     final String encodedID = URLEncoder.encode(id, "UTF-8");
 
                     try {
-                        final String host = aRequest.getLocalName();
-                        final String port = Integer.toString(aRequest.getLocalPort());
-                        final URL url = new URL(StringUtils.format(METADATA_URL, host, port, encodedID));
+                        String server;
+                        if (localServer != null) {
+                            // refer to this iiif servlet at a pre-configured internal URL
+                            server = localServer;
+                        } else {
+                            // just refer to this iiif servlet at the same address the external user did
+                            final String scheme = aRequest.getScheme();
+                            final String host = aRequest.getLocalName();
+                            final String port = Integer.toString(aRequest.getLocalPort());
+                            server = scheme+"://"+host+":"+port;
+                        }
+                        final URL url = new URL(server + contextPath
+                            + resolverPath +StringUtils.format(RESOLVE_METADATA_QUERY, encodedID));
 
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("Querying image metadata: {}", url);
                         }
 
+                        // issue JSON http request to myself and parse the output as JSON.
+                        // Ideally, I could just call the code directly, but the config and init setup for the
+                        //   Djatoka code isn't quite worth messing with.
                         final JsonNode json = MAPPER.readTree(url.openStream());
 
                         // Pull out relevant info from our metadata service
@@ -379,12 +423,12 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Cast floats as integers because that's what djatoka expects
         if (aScale == null) {
             values = new String[] { id, DEFAULT_VIEW_FORMAT, aLevel, Integer.toString((int) aRotation) };
-            url = StringUtils.format(IMAGE_URL, values);
+            url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
             values =
                     new String[] { id, DEFAULT_VIEW_FORMAT, aRegion, aScale.equals("full") ? "1.0" : aScale,
                         Integer.toString((int) aRotation) };
-            url = StringUtils.format(REGION_URL, values);
+            url = resolverPath +StringUtils.format(RESOLVE_REGION_QUERY, values);
         }
 
         // Right now we just let the OpenURL interface do the work
@@ -399,9 +443,11 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     private void cacheNewImage(final HttpServletRequest aRequest, final String aKey, final File aDestFile) {
         final HttpSession session = aRequest.getSession();
+        // path to temp file that the djatoka code saved in its temp cache (not the freelib temp cache!)
         final String fileName = (String) session.getAttribute(aKey);
 
         if (fileName != null) {
+            // name by which to reference the cached file when talking to OpenURL code
             final String cacheName = (String) session.getAttribute(fileName);
             final File cachedFile = new File(fileName);
 
@@ -431,6 +477,11 @@ public class ImageServlet extends HttpServlet implements Constants {
         } else if (LOGGER.isWarnEnabled()) {
             LOGGER.warn("Couldn't cache ({} = {}); session lacked new image information", aKey, aDestFile
                     .getAbsolutePath());
+            Enumeration<String> fu = session.getAttributeNames();
+            while (fu.hasMoreElements()) {
+                String name = fu.nextElement();
+                LOGGER.warn("  --- session has attribute "+name+" = "+session.getAttribute(name));
+            }
         }
     }
 }

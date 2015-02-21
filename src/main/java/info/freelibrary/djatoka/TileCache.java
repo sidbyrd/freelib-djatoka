@@ -1,34 +1,28 @@
 
 package info.freelibrary.djatoka;
 
-import info.freelibrary.djatoka.util.CacheUtils;
+import au.com.bytecode.opencsv.CSVReader;
 import info.freelibrary.djatoka.iiif.Constants;
-
+import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.util.XMLBundleControl;
 import info.freelibrary.util.XMLResourceBundle;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.net.UnknownHostException;
-
-import java.util.Iterator;
-import java.util.List;
-import java.util.ResourceBundle;
-
 import nu.xom.Builder;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.ParsingException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import au.com.bytecode.opencsv.CSVReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.net.UnknownHostException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ResourceBundle;
 
 public class TileCache {
 
@@ -142,7 +136,9 @@ public class TileCache {
             } else {
                 LOGGER.error(BUNDLE.get("TC_SERVER_STATUS_CODE"), status, urlString);
             }
-        } catch (IOException | ParsingException details) {
+        } catch (IOException details) {
+            LOGGER.error(details.getMessage());
+        } catch ( ParsingException details) {
             LOGGER.error(details.getMessage());
         }
     }
