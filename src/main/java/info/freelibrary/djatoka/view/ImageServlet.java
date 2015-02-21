@@ -201,6 +201,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             // didn't work? Shouldn't fail here, so just fake something.
             resolverPath = "/resolver";
         }
+        LOGGER.debug("IIIF server using context path of {}", contextPath);
         LOGGER.debug("IIIF server using resolver URL of {}", resolverPath);
     }
 

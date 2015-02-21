@@ -35,7 +35,7 @@
 		var protocol = url.attr('protocol');
 		var host = url.attr('host');
 		var port = url.attr('port');
-		var directory = url.attr('directory');
+		var directory = url.attr('directory').split('new/')[0];
 		if (url.param('test')) {
 			protocol = 'http';
 			host = '127.0.0.1'; // cannot use 'localhost' bc something is stupid when using IPv6.
