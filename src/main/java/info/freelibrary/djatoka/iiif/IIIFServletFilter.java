@@ -21,7 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A {@link javax.servlet.ServletFilter} that parsing incoming IIIF requests for FreeLib-Djatoka.
+ * A {@link javax.servlet.Filter} that parsing incoming IIIF requests for FreeLib-Djatoka.
  * 
  * @author <a href="mailto:ksclarke@gmail.com">Kevin S. Clarke</a>
  */
@@ -34,7 +34,7 @@ public class IIIFServletFilter implements Filter, Constants {
     private FilterConfig myFilterConfig;
 
     /**
-     * Destroys the {@link javax.servlet.ServletFilter}.
+     * Destroys the {@link javax.servlet.Filter}.
      */
     public void destroy() {
         myFilterConfig = null;
@@ -55,6 +55,8 @@ public class IIIFServletFilter implements Filter, Constants {
         servicePrefix = myFilterConfig.getInitParameter("prefix");
 
         if (servicePrefix == null) {
+            // Per IIIF spec, this is "The path on the host server to the service" and needs to include
+            // both contextPath of the webapp and also the servlet path within that contextPath.
             servicePrefix = context.getContextPath();
         }
 
