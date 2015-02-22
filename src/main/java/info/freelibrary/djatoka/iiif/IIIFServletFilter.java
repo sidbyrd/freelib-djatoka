@@ -6,14 +6,9 @@ import info.freelibrary.util.StringUtils;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.NoSuchElementException;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterChain;
-import javax.servlet.FilterConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
+import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -31,13 +26,13 @@ public class IIIFServletFilter implements Filter, Constants {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IIIFServletFilter.class);
 
-    private FilterConfig myFilterConfig;
+    private static String servicePrefix = null;
 
     /**
      * Destroys the {@link javax.servlet.Filter}.
      */
     public void destroy() {
-        myFilterConfig = null;
+        servicePrefix = null;
     }
 
     /**
@@ -48,17 +43,6 @@ public class IIIFServletFilter implements Filter, Constants {
      */
     public void doFilter(ServletRequest aRequest, ServletResponse aResponse, FilterChain aFilterChain)
             throws IOException, ServletException {
-        ServletContext context = myFilterConfig.getServletContext();
-        String servicePrefix;
-
-        // The service prefix can come from a context path or a filter config
-        servicePrefix = myFilterConfig.getInitParameter("prefix");
-
-        if (servicePrefix == null) {
-            // Per IIIF spec, this is "The path on the host server to the service" and needs to include
-            // both contextPath of the webapp and also the servlet path within that contextPath.
-            servicePrefix = context.getContextPath();
-        }
 
         if (aRequest instanceof HttpServletRequest) {
             if (LOGGER.isDebugEnabled()) {
@@ -70,11 +54,7 @@ public class IIIFServletFilter implements Filter, Constants {
             IIIFRequest iiif;
 
             try {
-                if (hasServicePrefix(servicePrefix)) {
-                    iiif = IIIFRequest.Builder.getRequest(url, servicePrefix);
-                } else {
-                    iiif = IIIFRequest.Builder.getRequest(url);
-                }
+                iiif = IIIFRequest.Builder.getRequest(url, servicePrefix);
 
                 if (iiif.hasExtension()) {
                     String extension = iiif.getExtension();
@@ -143,12 +123,41 @@ public class IIIFServletFilter implements Filter, Constants {
      * @throws ServletException If there is trouble initializing the filter
      */
     public void init(FilterConfig aFilterConfig) throws ServletException {
+        ServletContext context = aFilterConfig.getServletContext();
         Arrays.sort(CONTENT_TYPES); // so we can binary search across them
-        myFilterConfig = aFilterConfig;
-    }
 
-    private boolean hasServicePrefix(String aContextName) {
-        return aContextName != null && !aContextName.equals("/") && !aContextName.equals(""); // variations necessary?
+        String iiifPath = aFilterConfig.getInitParameter("servicePrefix");
+        if (iiifPath != null) {
+            // needs to start with "/" to match the way the lookup below works (unless it's "").
+            if (iiifPath.length()>0 && !iiifPath.startsWith("/")) {
+                iiifPath = "/"+iiifPath;
+            }
+        } else  {
+            // get the (first) URL that the servlet named "iiifViewer" (in web.xml) is served at, relative to contextPath
+            try {
+                iiifPath = context.getServletRegistration("iiifViewer").getMappings().iterator().next();
+            } catch (UnsupportedOperationException e) {
+                LOGGER.error("Unable to get servlet registration for 'iiifViewer': {}", e.getMessage());
+            } catch (NoSuchElementException e) {
+                LOGGER.error("No registrations found for servlet 'iiifViewer': {}", e.getMessage());
+            }
+            if (iiifPath == null) {
+                // didn't work? Shouldn't fail here, so just fake something.
+                iiifPath = "/iiif";
+            }
+
+        }
+
+        // construct servicePrefix including context path.
+        // reminder: contextPath is either "/foo" or "" if deployed at server root.
+        servicePrefix = context.getContextPath()+iiifPath;
+        if (servicePrefix.length()==0) {
+            // "" is a legal value, but we represent it as null
+            servicePrefix = null;
+        } else {
+            // if non-empty, will always start with one "/", but for IIIF "Prefix" purposes, remove that.
+            servicePrefix = servicePrefix.substring(1);
+        }
     }
 
     private String getPreferredContentType(String[] aTypeArray) {
