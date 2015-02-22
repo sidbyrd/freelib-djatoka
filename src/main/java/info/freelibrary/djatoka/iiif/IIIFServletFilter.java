@@ -126,7 +126,7 @@ public class IIIFServletFilter implements Filter, Constants {
         ServletContext context = aFilterConfig.getServletContext();
         Arrays.sort(CONTENT_TYPES); // so we can binary search across them
 
-        String iiifPath = aFilterConfig.getInitParameter("servicePrefix");
+        String iiifPath = aFilterConfig.getInitParameter("prefix");
         if (iiifPath != null) {
             // needs to start with "/" to match the way the lookup below works (unless it's "").
             if (iiifPath.length()>0 && !iiifPath.startsWith("/")) {
@@ -144,6 +144,8 @@ public class IIIFServletFilter implements Filter, Constants {
             if (iiifPath == null) {
                 // didn't work? Shouldn't fail here, so just fake something.
                 iiifPath = "/iiif";
+            } else if (iiifPath.endsWith("/*")) {
+                iiifPath = iiifPath.substring(0, iiifPath.length()-2);
             }
 
         }
