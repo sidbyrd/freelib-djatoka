@@ -158,6 +158,9 @@ public class IIIFServletFilter implements Filter, Constants {
             // if non-empty, will always start with one "/", but for IIIF "Prefix" purposes, remove that.
             servicePrefix = servicePrefix.substring(1);
         }
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Filter init using servicePrefix: {}", servicePrefix);
+        }
     }
 
     private String getPreferredContentType(String[] aTypeArray) {
