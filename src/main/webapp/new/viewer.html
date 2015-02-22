@@ -35,11 +35,14 @@
 		var protocol = url.attr('protocol');
 		var host = url.attr('host');
 		var port = url.attr('port');
+        if (port) {
+            port = ':'+port;
+        }
 		var directory = url.attr('directory').split('new/')[0];
 		if (url.param('test')) {
 			protocol = 'http';
 			host = '127.0.0.1'; // cannot use 'localhost' bc something is stupid when using IPv6.
-			port = '8888';
+			port = ':8888';
 		}
 
 		var tileSources = [];
@@ -48,7 +51,7 @@
 		if (remote != null) {
 			// old-style URL compatibility
 			// note: no longer insecure; server parses out handle and image, doesn't blindly follow
-			tileSources.push( protocol+'://'+host+':'+port+directory+'iiif/'+remote+'/info.json' );
+			tileSources.push( protocol+'://'+host+port+directory+'iiif/'+remote+'/info.json' );
 		} else {
 			// new-style discrete parts, with possibility of multiple files
 			var handle = url.param('h');
@@ -58,7 +61,7 @@
             if (handle != null && images != null) {
                 images = images.split(',');
                 for (i=0; i<images.length; i++) {
-                    tileSources.push( protocol+'://'+host+':'+port+directory+'iiif/'+handle+'/'+images[i]+'/info.json' );
+                    tileSources.push( protocol+'://'+host+port+directory+'iiif/'+handle+'/'+images[i]+'/info.json' );
                 }
                 display = 'Viewing '+images[start]; // TODO show this, and more info, links, breadcrumbs, etc.
             }
