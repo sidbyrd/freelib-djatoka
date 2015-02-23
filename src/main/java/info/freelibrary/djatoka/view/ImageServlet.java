@@ -115,7 +115,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             }
 
             final ImageRequest imageRequest = (ImageRequest) iiif;
-            final String size = imageRequest.getSize().toString();
+            final String scale = imageRequest.getSize().toString();
             final Region iiifRegion = imageRequest.getRegion();
             final float rotation = imageRequest.getRotation();
             String region;
@@ -136,13 +136,13 @@ public class ImageServlet extends HttpServlet implements Constants {
             }
 
             if (myCache != null) {
-                checkImageCache(id, level, size, region, rotation, aRequest, aResponse);
+                checkImageCache(id, level, region, scale, rotation, aRequest, aResponse);
             } else {
                 if (LOGGER.isWarnEnabled()) {
                     LOGGER.warn("Cache isn't configured correctly");
                 }
 
-                serveNewImage(id, level, region, size, rotation, aRequest, aResponse);
+                serveNewImage(id, level, region, scale, rotation, aRequest, aResponse);
             }
         } else {
 		    aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unrecognized IIIF message type");
@@ -388,12 +388,12 @@ public class ImageServlet extends HttpServlet implements Constants {
         return new int[] { height, width, levels };
     }
 
-    private void checkImageCache(final String aID, final String aLevel, final String aScale, final String aRegion,
+    private void checkImageCache(final String aID, final String aLevel, final String aRegion, final String aScale,
             final float aRotation, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws IOException, ServletException {
         final PairtreeRoot cacheDir = new PairtreeRoot(new File(myCache));
         final PairtreeObject cacheObject = cacheDir.getObject(aID);
-        final String fileName = CacheUtils.getFileName(aLevel, aScale, aRegion, aRotation);
+        final String fileName = CacheUtils.getFileName(aLevel, aRegion, aScale, aRotation);
         final File imageFile = new File(cacheObject, fileName);
 
         if (imageFile.exists()) {
@@ -449,6 +449,12 @@ public class ImageServlet extends HttpServlet implements Constants {
         dispatcher.forward(aRequest, aResponse);
     }
 
+    /**
+     * For an image that was just served by the OpenURL/Djatoka system, move its file from their cache to ours.
+     * @param aRequest the incoming image request that Djatoka just fulfilled
+     * @param aKey the image ID + underscore + and the combined display parameters, which match what Djatoka just served.
+     * @param aDestFile the destination file in the tile cache PairTree to which to move the served image tile.
+     */
     private void cacheNewImage(final HttpServletRequest aRequest, final String aKey, final File aDestFile) {
         final HttpSession session = aRequest.getSession();
         // path to temp file that the djatoka code saved in its temp cache (not the freelib tile cache!)

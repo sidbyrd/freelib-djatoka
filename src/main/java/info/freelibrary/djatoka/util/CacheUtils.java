@@ -15,12 +15,12 @@ public class CacheUtils {
      * Return a file name for the cached file based on its characteristics.
      * 
      * @param aLevel A level to be cached
-     * @param aScale A scale to be cached
      * @param aRegion A region to be cached
+     * @param aScale A scale to be cached
      * @param aRotation A rotation to be cached
      * @return The file name for the cached file
      */
-    public static final String getFileName(final String aLevel, final String aScale, final String aRegion,
+    public static final String getFileName(final String aLevel, final String aRegion, final String aScale,
             final float aRotation) {
         final StringBuilder cfName = new StringBuilder("image_");
         final String region = isEmpty(aRegion) ? "full" : aRegion.replace(',', '-');

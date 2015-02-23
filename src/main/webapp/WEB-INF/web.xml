@@ -46,10 +46,10 @@
     <servlet-name>resolver</servlet-name>
     <url-pattern>/resolver</url-pattern>
   </servlet-mapping>
-  <servlet-mapping>
+  <!-- <servlet-mapping>
     <servlet-name>resolver</servlet-name>
     <url-pattern>/resolve</url-pattern>
-  </servlet-mapping>
+  </servlet-mapping> -->
   <!-- <servlet-mapping>
     <servlet-name>healthCheck</servlet-name>
     <url-pattern>/health</url-pattern>

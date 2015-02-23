@@ -59,22 +59,23 @@ public class IIIFServletFilter implements Filter, Constants {
                 if (iiif.hasExtension()) {
                     String extension = iiif.getExtension();
 
-                    if (extension.equals("xml")) {
-                        aResponse.setCharacterEncoding(DEFAULT_CHARSET);
-                        aResponse.setContentType(XML_CONTENT_TYPE);
-                        aRequest.setAttribute(CONTENT_TYPE_KEY, XML_CONTENT_TYPE);
+                    // in rough order of expected frequency
+                    if (extension.equals("jpg")) {
+                        aRequest.setAttribute(CONTENT_TYPE_KEY, JPG_CONTENT_TYPE);
+                        aResponse.setContentType(JPG_CONTENT_TYPE);
                     } else if (extension.equals("json")) {
                         aRequest.setAttribute(CONTENT_TYPE_KEY, JSON_CONTENT_TYPE);
                         aResponse.setContentType(JSON_CONTENT_TYPE);
-                    } else if (extension.equals("jpg")) {
-                        aRequest.setAttribute(CONTENT_TYPE_KEY, JPG_CONTENT_TYPE);
-                        aResponse.setContentType(JPG_CONTENT_TYPE);
-                    } else if (extension.equals("gif")) {
-                        aRequest.setAttribute(CONTENT_TYPE_KEY, GIF_CONTENT_TYPE);
-                        aResponse.setContentType(GIF_CONTENT_TYPE);
                     } else if (extension.equals("jp2")) {
                         aRequest.setAttribute(CONTENT_TYPE_KEY, JP2_CONTENT_TYPE);
                         aResponse.setContentType(JP2_CONTENT_TYPE);
+                    } else if (extension.equals("xml")) {
+                        aResponse.setCharacterEncoding(DEFAULT_CHARSET);
+                        aResponse.setContentType(XML_CONTENT_TYPE);
+                        aRequest.setAttribute(CONTENT_TYPE_KEY, XML_CONTENT_TYPE);
+                    } else if (extension.equals("gif")) {
+                        aRequest.setAttribute(CONTENT_TYPE_KEY, GIF_CONTENT_TYPE);
+                        aResponse.setContentType(GIF_CONTENT_TYPE);
                     } else if (extension.equals("pdf")) {
                         aRequest.setAttribute(CONTENT_TYPE_KEY, PDF_CONTENT_TYPE);
                         aResponse.setContentType(PDF_CONTENT_TYPE);

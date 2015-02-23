@@ -20,7 +20,7 @@ public class CacheUtilsTest {
     @Test
     public void testGetFileName() {
         String scale = Integer.toString(CacheUtils.getScale(10));
-        assertEquals("image_1024_0-0-1023-1023_1.jpg", CacheUtils.getFileName(null, scale, "0,0,1023,1023", 1.0f));
+        assertEquals("image_1024_0-0-1023-1023_1.jpg", CacheUtils.getFileName(null, "0,0,1023,1023", scale, 1.0f));
 
         // TODO: should this class throw an exception if level AND scale/region
         // are passed to it?
