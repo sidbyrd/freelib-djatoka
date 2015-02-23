@@ -86,27 +86,30 @@ public class IdentifierResolver implements IReferentResolver, Constants {
     @Override
     public ImageRecord getImageRecord(final String aRequest) throws ResolverException {
         String decodedRequest = extractID(aRequest);
+        if (decodedRequest != null) {
 
-        // if we already have the id cached, easy.
-        ImageRecord image = getCachedImage(decodedRequest);
-        if (image != null) {
-            return image;
-        }
-
-        // make id into a URL
-        for (String urlPattern : myIngestImageHosts) {
-            final String url = StringUtils.format(urlPattern, decodedRequest);
-
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Trying to resolve using URL pattern: {}", url);
-            }
-
-            // fetch it. If it works, we're done.
-            image = getRemoteImage(decodedRequest, url);
+            // if we already have the id cached, easy.
+            ImageRecord image = getCachedImage(decodedRequest);
             if (image != null) {
                 return image;
             }
+
+            // make id into a URL
+            for (String urlPattern : myIngestImageHosts) {
+                final String url = StringUtils.format(urlPattern, decodedRequest);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Trying to resolve using URL pattern: {}", url);
+                }
+
+                // fetch it. If it works, we're done.
+                image = getRemoteImage(decodedRequest, url);
+                if (image != null) {
+                    return image;
+                }
+            }
         }
+
 	    return null;
     }
 
@@ -121,6 +124,7 @@ public class IdentifierResolver implements IReferentResolver, Constants {
         final String id = ((URI) aReferent.getDescriptors()[0]).toASCIIString();
 
         if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("encoded: {}", id);
             LOGGER.debug("Translating Referent descriptor into String ID: {}", decode(id));
         }
 
