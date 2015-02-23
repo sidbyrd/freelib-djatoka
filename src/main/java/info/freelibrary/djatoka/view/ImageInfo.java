@@ -1,24 +1,21 @@
 
 package info.freelibrary.djatoka.view;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import info.freelibrary.djatoka.iiif.Constants;
+import info.freelibrary.djatoka.util.URLEncode;
 import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Elements;
 import nu.xom.Serializer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import info.freelibrary.djatoka.iiif.Constants;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ImageInfo {
 
@@ -140,9 +137,10 @@ public class ImageInfo {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode rootNode = mapper.createObjectNode();
         final ArrayNode formats, scaleFactors;
+        final String id = URLEncode.pathSafetyEncode(getIdentifier());
 
         rootNode.put("@context", "http://library.stanford.edu/iiif/image-api/1.1/context.json");
-        rootNode.put("@id", aService + "/" + aPrefix + "/" + getIdentifier());
+        rootNode.put("@id", aService + "/" + aPrefix + "/" + id);
         rootNode.put("width", getWidth());
         rootNode.put("height", getHeight());
 

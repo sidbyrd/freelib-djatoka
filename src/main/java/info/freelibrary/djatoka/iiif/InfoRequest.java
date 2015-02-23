@@ -6,9 +6,7 @@ import info.freelibrary.djatoka.view.IdentifierResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.net.URLEncoder;
 
 /**
  * An IIIF request for information about an image.
@@ -132,12 +130,6 @@ public class InfoRequest implements IIIFRequest {
                 }
 
                 throw new IIIFException("Request doesn't contain a valid identifier: " + aPath);
-            }
-            try {
-                // encode identifier for use with FreeLib code, which expects that
-                myIdentifier = URLEncoder.encode(myIdentifier, "UTF-8");
-            } catch (UnsupportedEncodingException details) {
-                throw new RuntimeException(details); // should not be possible
             }
         }
 

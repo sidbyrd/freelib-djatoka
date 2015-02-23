@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 
 /**
  * An image request from FreeLib-Djatoka's IIIF interface.
@@ -101,13 +100,6 @@ public class ImageRequest implements IIIFRequest {
 
             throw new IIIFException("Request doesn't contain a valid identifier: " + path);
         }
-        try {
-            // encode identifier for use with FreeLib code, which expects that
-            myIdentifier = URLEncoder.encode(myIdentifier, "UTF-8");
-        } catch (UnsupportedEncodingException details) {
-            throw new RuntimeException(details); // should not be possible
-        }
-
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Setting image identifier: {}", myIdentifier);
