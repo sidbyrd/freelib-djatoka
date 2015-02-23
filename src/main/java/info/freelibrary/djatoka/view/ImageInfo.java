@@ -140,16 +140,9 @@ public class ImageInfo {
         final ObjectMapper mapper = new ObjectMapper();
         final ObjectNode rootNode = mapper.createObjectNode();
         final ArrayNode formats, scaleFactors;
-        final String id;
-
-        try {
-            id = URLEncoder.encode(getIdentifier(), "UTF-8");
-        } catch (final UnsupportedEncodingException details) {
-            throw new RuntimeException("JVM doesn't support UTF-8!!", details);
-        }
 
         rootNode.put("@context", "http://library.stanford.edu/iiif/image-api/1.1/context.json");
-        rootNode.put("@id", aService + "/" + aPrefix + "/" + id);
+        rootNode.put("@id", aService + "/" + aPrefix + "/" + getIdentifier());
         rootNode.put("width", getWidth());
         rootNode.put("height", getHeight());
 
