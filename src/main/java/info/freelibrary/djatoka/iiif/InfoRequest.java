@@ -6,6 +6,8 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 
+import gov.lanl.adore.djatoka.openurl.ReferentManager;
+import info.freelibrary.djatoka.view.IdentifierResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,10 +125,10 @@ public class InfoRequest implements IIIFRequest {
                 startIndex += (servicePrefixPath.length() + 1);
             }
 
-            /* Identifier SHOULD already be URL encoded, but we play it safe */
+            myIdentifier = aPath.substring(startIndex, endIndex);
+            myIdentifier = ((IdentifierResolver) ReferentManager.getResolver()).extractID(myIdentifier);
             try {
-                myIdentifier = aPath.substring(startIndex, endIndex);
-                myIdentifier = URLDecoder.decode(myIdentifier, "UTF-8");
+                // encode identifier for use with FreeLib code, which expects that
                 myIdentifier = URLEncoder.encode(myIdentifier, "UTF-8");
             } catch (UnsupportedEncodingException details) {
                 throw new RuntimeException(details); // should not be possible

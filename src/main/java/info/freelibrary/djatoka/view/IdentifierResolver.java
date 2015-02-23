@@ -38,11 +38,44 @@ public class IdentifierResolver implements IReferentResolver, Constants {
 
     private Map<String, ImageRecord> myRemoteImages;
 
-    private final List<String> myIngestSources = new CopyOnWriteArrayList<String>();
+    private final List<String> myIngestIdValidations = new CopyOnWriteArrayList<String>();
 
-    private final List<String> myIngestGuesses = new CopyOnWriteArrayList<String>();
+    private final List<String> myIngestImageHosts = new CopyOnWriteArrayList<String>();
 
     private File myJP2Dir;
+
+    /**
+     * Extracts and decodes the identifier from the request
+     *
+     * @param aRequest the request ID
+     * @return the portion of aRequest that matches from the validation regexes in the
+     *         djatoka.known.ingest.sources property in djatoka-properties.xml, or else
+     *         null if there were no matches.
+     */
+    public String extractID(final String aRequest) {
+        String decodedRequest = decode(aRequest);
+
+        // make sure id matches an allowed pattern
+	    for (String ingestSource : myIngestIdValidations) {
+	        final Pattern pattern = Pattern.compile(ingestSource);
+	        final Matcher matcher = pattern.matcher(decodedRequest);
+
+	        if (matcher.matches() && matcher.groupCount() > 0) {
+				// matched pattern may strip out non-id stuff here
+				final String id = matcher.group(1);
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Matches found for {}, id={}", decodedRequest, id);
+                }
+                return id;
+            } else if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("No Match in {} for {}", pattern.toString(), decodedRequest);
+            }
+        }
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("No Matches found for {}. Giving up.", decodedRequest);
+        }
+        return null;
+    }
 
     /**
      * Gets the image record for the requested image.
@@ -52,42 +85,28 @@ public class IdentifierResolver implements IReferentResolver, Constants {
      */
     @Override
     public ImageRecord getImageRecord(final String aRequest) throws ResolverException {
-        String decodedRequest = decode(aRequest);
+        String decodedRequest = extractID(aRequest);
 
-        // make sure id matches an allowed pattern
-	    for (String ingestSource : myIngestSources) {
-	        final Pattern pattern = Pattern.compile(ingestSource);
-	        final Matcher matcher = pattern.matcher(decodedRequest);
+        // if we already have the id cached, easy.
+        ImageRecord image = getCachedImage(decodedRequest);
+        if (image != null) {
+            return image;
+        }
 
-	        if (matcher.matches() && matcher.groupCount() > 0) {
-				// matched pattern may strip out non-id stuff here
-				decodedRequest = matcher.group(1);
+        // make id into a URL
+        for (String urlPattern : myIngestImageHosts) {
+            final String url = StringUtils.format(urlPattern, decodedRequest);
 
-				// if we already have the id, easy.
-				ImageRecord image = getCachedImage(decodedRequest);
-		        if (image != null) {
-			        return image;
-		        }
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Trying to resolve using URL pattern: {}", url);
+            }
 
-				// make id into a URL
-				for (String urlPattern : myIngestGuesses) {
-					final String url = StringUtils.format(urlPattern, decodedRequest);
-
-					if (LOGGER.isDebugEnabled()) {
-						LOGGER.debug("Trying to resolve using URL pattern: {}", url);
-					}
-
-					// fetch it. If it works, we're done.
-					image = getRemoteImage(decodedRequest, url);
-					if (image != null) {
-						return image;
-					}
-				}
-	        } else if (LOGGER.isDebugEnabled()) {
-	            LOGGER.debug("No Match in {} for {}", pattern.toString(), decodedRequest);
-	        }
-	    }
-
+            // fetch it. If it works, we're done.
+            image = getRemoteImage(decodedRequest, url);
+            if (image != null) {
+                return image;
+            }
+        }
 	    return null;
     }
 
@@ -144,15 +163,15 @@ public class IdentifierResolver implements IReferentResolver, Constants {
      */
     @Override
     public void setProperties(final Properties aProps) throws ResolverException {
-        final String sources = aProps.getProperty("djatoka.known.ingest.sources");
-        final String guesses = aProps.getProperty("djatoka.known.ingest.guesses");
+        final String idValidations = aProps.getProperty(INGEST_VALIDATIONS);
+        final String imageHosts = aProps.getProperty(INGEST_HOSTS);
 
         myJP2Dir = new File(aProps.getProperty(JP2_DATA_DIR));
         myMigrator.setPairtreeRoot(myJP2Dir);
         myRemoteImages = new ConcurrentHashMap<String, ImageRecord>();
 
-        myIngestSources.addAll(Arrays.asList(sources.split("\\s+")));
-        myIngestGuesses.addAll(Arrays.asList(guesses.split("\\s+")));
+        myIngestIdValidations.addAll(Arrays.asList(idValidations.split("\\s+")));
+        myIngestImageHosts.addAll(Arrays.asList(imageHosts.split("\\s+")));
     }
 
     private ImageRecord getCachedImage(final String aReferentID) {
@@ -241,8 +260,7 @@ public class IdentifierResolver implements IReferentResolver, Constants {
 
     private String decode(final String aRequest) {
         try {
-            final String request = URLDecoder.decode(aRequest, "UTF-8");
-            return URLDecoder.decode(request, "UTF-8");
+            return URLDecoder.decode(aRequest, "UTF-8");
         } catch (final UnsupportedEncodingException details) {
             throw new RuntimeException("JVM doesn't support UTF-8!!", details);
         }

@@ -23,6 +23,9 @@ public interface Constants {
 
     public static final String INTERNAL_SERVER = "djatoka.server.internal";
 
+    public static final String INGEST_VALIDATIONS = "djatoka.ingest.id.validations";
+    public static final String INGEST_HOSTS = "djatoka.ingest.id.hosts";
+
     public static final String[] TIF_EXTS = new String[] { "tif", "tiff" };
 
     // Would be nicer to tell the regex filter to be case insensitive

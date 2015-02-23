@@ -1,12 +1,19 @@
 
 package info.freelibrary.djatoka.iiif;
 
+import gov.lanl.adore.djatoka.openurl.IReferentResolver;
+import gov.lanl.adore.djatoka.openurl.ReferentManager;
+import gov.lanl.adore.djatoka.openurl.ResolverException;
+import gov.lanl.adore.djatoka.util.IOUtils;
+import info.freelibrary.djatoka.view.IdentifierResolver;
 import info.freelibrary.util.StringUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
+import java.util.Properties;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
@@ -14,6 +21,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.tools.jstat.Identifier;
 
 /**
  * A {@link javax.servlet.Filter} that parsing incoming IIIF requests for FreeLib-Djatoka.
@@ -163,6 +171,20 @@ public class IIIFServletFilter implements Filter, Constants {
         }
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Filter init using servicePrefix: {}", servicePrefix);
+        }
+
+        // make sure the identifier resolver is initialized
+        try {
+            if (!ReferentManager.isInit()) {
+                final InputStream is = getClass().getResourceAsStream("/" + info.freelibrary.djatoka.Constants.PROPERTIES_FILE);
+                Properties props = new Properties();
+                props.loadFromXML(is);
+                ReferentManager.init((IReferentResolver) new IdentifierResolver(), props);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Couldn't open props file from classpath: {}", e.getMessage());
+        } catch (ResolverException e) {
+            // actually, IdentifierResolver never throws this.
         }
     }
 

@@ -1,11 +1,14 @@
 
 package info.freelibrary.djatoka.iiif;
 
+import gov.lanl.adore.djatoka.openurl.ReferentManager;
+import info.freelibrary.djatoka.view.IdentifierResolver;
 import info.freelibrary.util.StringUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +93,15 @@ public class ImageRequest implements IIIFRequest {
             throw new IIIFException("Request doesn't contain correct number of parts: " + path);
         }
 
-        myIdentifier = decode(parts[0]);
+        myIdentifier = parts[0];
+        myIdentifier = ((IdentifierResolver) ReferentManager.getResolver()).extractID(myIdentifier);
+        try {
+            // encode identifier for use with FreeLib code, which expects that
+            myIdentifier = URLEncoder.encode(myIdentifier, "UTF-8");
+        } catch (UnsupportedEncodingException details) {
+            throw new RuntimeException(details); // should not be possible
+        }
+
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Setting image identifier: {}", myIdentifier);
@@ -216,8 +227,7 @@ public class ImageRequest implements IIIFRequest {
         String string;
 
         try {
-            string = URLDecoder.decode(aString, "UTF-8");
-            return URLDecoder.decode(string, "UTF-8");
+            return URLDecoder.decode(aString, "UTF-8");
         } catch (UnsupportedEncodingException details) {
             throw new RuntimeException(details); // every JVM supports UTF-8
         }
