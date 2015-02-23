@@ -316,7 +316,6 @@ public class ImageServlet extends HttpServlet implements Constants {
 
                     final Document xml = new Builder().build(inStream);
                     final Serializer serializer = new Serializer(outStream);
-                    final String encodedID = URLEncoder.encode(id, "UTF-8");
 
                     try {
                         String server;
@@ -329,7 +328,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                         }
                         // construct URL with context path because we'll be dispatching it externally to this webapp.
                         final URL url = new URL(server + contextPath
-                            + resolverPath + StringUtils.format(RESOLVE_METADATA_QUERY, encodedID));
+                            + resolverPath + StringUtils.format(RESOLVE_METADATA_QUERY, id));
 
                         if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("Querying image metadata: {}", url);
