@@ -26,7 +26,6 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.Enumeration;
 import java.util.NoSuchElementException;
 import java.util.Properties;
@@ -421,7 +420,6 @@ public class ImageServlet extends HttpServlet implements Constants {
     private void serveNewImage(final String aID, final String aLevel, final String aRegion, final String aScale,
             final float aRotation, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws IOException, ServletException {
-        final String id = URLEncoder.encode(aID, CHARSET);
         RequestDispatcher dispatcher;
         String[] values;
         String url;
@@ -429,11 +427,11 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Cast floats as integers because that's what djatoka expects
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
         if (aScale == null) {
-            values = new String[] { id, DEFAULT_VIEW_FORMAT, aLevel, Integer.toString((int) aRotation) };
+            values = new String[] { aID, DEFAULT_VIEW_FORMAT, aLevel, Integer.toString((int) aRotation) };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
             values =
-                    new String[] { id, DEFAULT_VIEW_FORMAT, aRegion, aScale.equals("full") ? "1.0" : aScale,
+                    new String[] { aID, DEFAULT_VIEW_FORMAT, aRegion, aScale.equals("full") ? "1.0" : aScale,
                         Integer.toString((int) aRotation) };
             url = resolverPath +StringUtils.format(RESOLVE_REGION_QUERY, values);
         }
