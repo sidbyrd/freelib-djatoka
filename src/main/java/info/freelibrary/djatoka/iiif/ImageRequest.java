@@ -4,14 +4,13 @@ package info.freelibrary.djatoka.iiif;
 import gov.lanl.adore.djatoka.openurl.ReferentManager;
 import info.freelibrary.djatoka.view.IdentifierResolver;
 import info.freelibrary.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * An image request from FreeLib-Djatoka's IIIF interface.
@@ -100,7 +99,7 @@ public class ImageRequest implements IIIFRequest {
                 LOGGER.error("Request path '{}' doesn't contain a valid identifier", StringUtils.toString(parts, ' '));
             }
 
-            throw new IIIFException("Request doesn't contain correct number of parts: " + path);
+            throw new IIIFException("Request doesn't contain a valid identifier: " + path);
         }
         try {
             // encode identifier for use with FreeLib code, which expects that

@@ -1,15 +1,14 @@
 
 package info.freelibrary.djatoka.iiif;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-
 import gov.lanl.adore.djatoka.openurl.ReferentManager;
 import info.freelibrary.djatoka.view.IdentifierResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
+import java.net.URLEncoder;
 
 /**
  * An IIIF request for information about an image.
@@ -31,7 +30,7 @@ public class InfoRequest implements IIIFRequest {
      * 
      * @param aURL A {@link URL} representing the <code>InfoRequest</code>
      */
-    public InfoRequest(URL aURL) {
+    public InfoRequest(URL aURL) throws IIIFException {
         this(aURL, null);
     }
 
@@ -41,7 +40,7 @@ public class InfoRequest implements IIIFRequest {
      * @param aURL A {@link URL} representing the <code>InfoRequest</code>
      * @param aServicePrefix A pre-configured prefix to use in parsing the request
      */
-    public InfoRequest(URL aURL, String aServicePrefix) {
+    public InfoRequest(URL aURL, String aServicePrefix) throws IIIFException {
         myServicePrefix = Builder.checkServicePrefix(aServicePrefix);
         parseExtension(aURL.getPath());
         parseIdentifier(aURL.getPath());
@@ -106,7 +105,7 @@ public class InfoRequest implements IIIFRequest {
         }
     }
 
-    private void parseIdentifier(String aPath) {
+    private void parseIdentifier(String aPath) throws IIIFException {
         int endIndex = aPath.lastIndexOf("/info."); // A literal from the spec
         String servicePrefixPath = "/"; // First slash for default contextPath
         int startIndex = 1; // To skip the first slash in default contextPaths
@@ -127,6 +126,13 @@ public class InfoRequest implements IIIFRequest {
 
             myIdentifier = aPath.substring(startIndex, endIndex);
             myIdentifier = ((IdentifierResolver) ReferentManager.getResolver()).extractID(myIdentifier);
+            if (myIdentifier==null) {
+                if (LOGGER.isErrorEnabled()) {
+                    LOGGER.error("Request path '{}' doesn't contain a valid identifier", aPath);
+                }
+
+                throw new IIIFException("Request doesn't contain a valid identifier: " + aPath);
+            }
             try {
                 // encode identifier for use with FreeLib code, which expects that
                 myIdentifier = URLEncoder.encode(myIdentifier, "UTF-8");
