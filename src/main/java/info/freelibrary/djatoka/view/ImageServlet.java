@@ -492,10 +492,10 @@ public class ImageServlet extends HttpServlet implements Constants {
             LOGGER.warn("Couldn't cache ({} = {}); session lacked new image information", aKey, aDestFile
                     .getAbsolutePath());
             Enumeration<String> fu = session.getAttributeNames();
-            while (fu.hasMoreElements()) {
+            /* while (fu.hasMoreElements()) {
                 String name = fu.nextElement();
                 LOGGER.warn("  --- session has attribute "+name+" = "+session.getAttribute(name));
-            }
+            }*/
         }
     }
 
