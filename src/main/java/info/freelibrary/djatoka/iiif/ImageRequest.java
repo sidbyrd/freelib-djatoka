@@ -95,6 +95,13 @@ public class ImageRequest implements IIIFRequest {
 
         myIdentifier = parts[0];
         myIdentifier = ((IdentifierResolver) ReferentManager.getResolver()).extractID(myIdentifier);
+        if (myIdentifier==null) {
+            if (LOGGER.isErrorEnabled()) {
+                LOGGER.error("Request path '{}' doesn't contain a valid identifier", StringUtils.toString(parts, ' '));
+            }
+
+            throw new IIIFException("Request doesn't contain correct number of parts: " + path);
+        }
         try {
             // encode identifier for use with FreeLib code, which expects that
             myIdentifier = URLEncoder.encode(myIdentifier, "UTF-8");
