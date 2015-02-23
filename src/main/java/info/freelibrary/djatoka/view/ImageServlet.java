@@ -366,7 +366,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                             throw new FileNotFoundException(id + " not found");
                         } else {
                             if (LOGGER.isErrorEnabled()) {
-                                LOGGER.error("[{}] " + details.getMessage(), encodedID, details);
+                                LOGGER.error("[{}] " + details.getMessage(), id, details);
                             }
 
                             throw details;
