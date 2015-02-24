@@ -146,9 +146,9 @@ public class ImageInfo {
 
         scaleFactors = rootNode.arrayNode();
 
+        // treat levels as exponential (output is 2^^(level-1), up to a max of 256==2^^(9-1), because let's not be crazy.
         int start = 1;
-        for (int index = 0; index < myLevel; index++) {
-            //scaleFactors.add(index + 1);
+        for (int level = 0; level < myLevel && level <= 9; level++) {
             scaleFactors.add(start);
             start *=2;
         }
