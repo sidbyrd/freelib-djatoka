@@ -261,6 +261,9 @@ public class IdentifierResolver implements IReferentResolver, Constants {
 
             if (imageFile.length() > 0) {
                 myRemoteImages.put(id, image);
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("** Returning JP2 image from getRemoteImage() **");
+                }
             } else {
                 throw new ResolverException("An error occurred processing file: " + uri.toURL());
             }
@@ -268,12 +271,6 @@ public class IdentifierResolver implements IReferentResolver, Constants {
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("Unable to access {} ({})", id, details.getMessage());
             }
-
-            return null;
-        }
-
-        if (LOGGER.isDebugEnabled() && image != null) {
-            LOGGER.debug("** Returning JP2 image from getRemoteImage() **");
         }
 
         return image;
