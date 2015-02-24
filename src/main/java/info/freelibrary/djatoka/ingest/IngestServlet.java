@@ -1,11 +1,10 @@
 
 package info.freelibrary.djatoka.ingest;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Properties;
+import gov.lanl.adore.djatoka.util.IOUtils;
+import info.freelibrary.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
@@ -13,13 +12,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import gov.lanl.adore.djatoka.util.IOUtils;
-
-import info.freelibrary.util.StringUtils;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Properties;
 
 /**
  * Allows ingest jobs to be triggered from a Web interface. It can operate in "unattended" or "attended" (the default)
@@ -41,8 +38,6 @@ public class IngestServlet extends HttpServlet {
      * IngestServlet's <code>serialVersionUID</code>.
      */
     private static final long serialVersionUID = 8661545409056868772L;
-
-    private static final String PROPERTIES_FILE = "djatoka-properties.xml";
 
     @Override
     protected void doGet(final HttpServletRequest aRequest, final HttpServletResponse aResponse) throws IOException,
@@ -78,8 +73,8 @@ public class IngestServlet extends HttpServlet {
     private String ingestFileSystem(final String aUnattendedRun, final ServletContext aServletContext)
             throws IOException {
         final String dir = aServletContext.getRealPath("/WEB-INF/classes") + "/";
-        final String propertiesFile = dir + PROPERTIES_FILE;
-        final boolean unattended = aUnattendedRun != null ? true : false;
+        final String propertiesFile = dir + info.freelibrary.djatoka.Constants.PROPERTIES_FILE;
+        final boolean unattended = aUnattendedRun != null;
         final ServletContext context = getServletContext();
         IngestThread thread = (IngestThread) context.getAttribute("ingest");
 

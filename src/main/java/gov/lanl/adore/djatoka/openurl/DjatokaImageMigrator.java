@@ -23,18 +23,6 @@
 
 package gov.lanl.adore.djatoka.openurl;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import gov.lanl.adore.djatoka.DjatokaEncodeParam;
 import gov.lanl.adore.djatoka.DjatokaException;
 import gov.lanl.adore.djatoka.ICompress;
@@ -45,10 +33,20 @@ import gov.lanl.adore.djatoka.kdu.KduExtractExe;
 import gov.lanl.adore.djatoka.util.IOUtils;
 import gov.lanl.adore.djatoka.util.ImageProcessingUtils;
 import gov.lanl.adore.djatoka.util.ImageRecord;
-
 import info.freelibrary.util.PairtreeObject;
 import info.freelibrary.util.PairtreeRoot;
 import info.freelibrary.util.PairtreeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Utility class used to harvest URIs and compress files into JP2.
@@ -136,7 +134,7 @@ public class DjatokaImageMigrator implements FormatConstants, IReferentMigrator 
         try {
             // If the referent is not the URL, we've been able to parse an ID
             // out from the URL; if we did that, we assume it's already a JP2
-            boolean isJp2 = aReferent.equals(aURI.toString()) ? false : true;
+            boolean isJp2 = !aReferent.equals(aURI.toString());
 
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("Processing remote {}: {}", isJp2 ? "JP2 file" : "URI", aURI);

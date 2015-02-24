@@ -109,11 +109,6 @@ public interface DjatokaConstants {
     public static final String DEFAULT_CBLK = "{32,32}";
 
     /**
-     * Defined the file name of the default compression props file. Default Value: "djatoka-properties.xml"
-     */
-    public static final String DEFAULT_JPEG2K_PROP_FILENAME = "djatoka-properties.xml";
-
-    /**
      * Defined default color space. The default is not to use one.
      */
     public static final String DEFAULT_JP2_COLOR_SPACE = "";
