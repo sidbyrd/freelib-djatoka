@@ -66,15 +66,15 @@
 		}
 		
 		OpenSeadragon({
-			id : 'viewer',
-			prefixUrl : directory+'new/images/',
-			preserveViewport : true, /* after clicking next/prev */
-			initialPage : start,
-			showNavigator : true,
-			showRotationControl: true,
-			tileSources : tileSources,
-			tileSize : 256,
-			defaultZoomLevel: 0
+			id:'viewer',
+			prefixUrl:directory+'new/images/',
+			preserveViewport:true,
+			initialPage:start,
+			showNavigator:true,
+			showRotationControl:true,
+			tileSources:tileSources,
+			maxZoomPixelRatio:1,
+			animationTime:0.5
 		});
 	</script>
 </body>
