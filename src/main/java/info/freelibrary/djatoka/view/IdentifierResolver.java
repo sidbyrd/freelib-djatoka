@@ -37,7 +37,7 @@ public class IdentifierResolver implements IReferentResolver, Constants {
 
     private Map<String, ImageRecord> myRemoteImages;
 
-    private final List<String> myIngestIdValidations = new CopyOnWriteArrayList<String>();
+    private final List<Pattern> myIngestIdValidations = new CopyOnWriteArrayList<Pattern>();
 
     private final List<String> myIngestImageHosts = new CopyOnWriteArrayList<String>();
 
@@ -58,8 +58,7 @@ public class IdentifierResolver implements IReferentResolver, Constants {
         aRequest = URLEncode.decode(aRequest);
 
         // make sure id matches an allowed pattern
-	    for (String ingestSource : myIngestIdValidations) {
-	        final Pattern pattern = Pattern.compile(ingestSource);
+	    for (Pattern pattern : myIngestIdValidations) {
 	        final Matcher matcher = pattern.matcher(aRequest);
 
 	        if (matcher.matches() && matcher.groupCount() > 0) {
@@ -185,7 +184,9 @@ public class IdentifierResolver implements IReferentResolver, Constants {
         myMigrator.setPairtreeRoot(myJP2Dir);
         myRemoteImages = new ConcurrentHashMap<String, ImageRecord>();
 
-        myIngestIdValidations.addAll(Arrays.asList(idValidations.split("\\s+")));
+        for (String validation : idValidations.split("\\s+")) {
+            myIngestIdValidations.add(Pattern.compile(validation)); // pre-compile regular expressions
+        }
         myIngestImageHosts.addAll(Arrays.asList(imageHosts.split("\\s+")));
     }
 
