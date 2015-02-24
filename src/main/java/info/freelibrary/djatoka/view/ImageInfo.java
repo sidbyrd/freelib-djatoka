@@ -150,7 +150,7 @@ public class ImageInfo {
         for (int index = 0; index < myLevel; index++) {
             //scaleFactors.add(index + 1);
             scaleFactors.add(start);
-            start >>= 1;
+            start *=2;
         }
 
         rootNode.put("scale_factors", scaleFactors);
