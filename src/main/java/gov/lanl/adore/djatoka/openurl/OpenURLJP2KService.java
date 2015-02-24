@@ -21,25 +21,6 @@
 
 package gov.lanl.adore.djatoka.openurl;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.MessageDigest;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.oclc.oomRef.descriptors.ByValueMetadataImpl;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import gov.lanl.adore.djatoka.DjatokaDecodeParam;
 import gov.lanl.adore.djatoka.DjatokaException;
 import gov.lanl.adore.djatoka.DjatokaExtractProcessor;
@@ -49,21 +30,28 @@ import gov.lanl.adore.djatoka.plugin.ITransformPlugIn;
 import gov.lanl.adore.djatoka.util.IOUtils;
 import gov.lanl.adore.djatoka.util.ImageRecord;
 import gov.lanl.util.HttpDate;
-
 import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.djatoka.view.IdentifierResolver;
-
-import info.openurl.oom.ContextObject;
-import info.openurl.oom.OpenURLRequest;
-import info.openurl.oom.OpenURLRequestProcessor;
-import info.openurl.oom.OpenURLResponse;
-import info.openurl.oom.Service;
+import info.openurl.oom.*;
 import info.openurl.oom.config.ClassConfig;
 import info.openurl.oom.config.OpenURLConfig;
 import info.openurl.oom.entities.Referent;
 import info.openurl.oom.entities.ReferringEntity;
 import info.openurl.oom.entities.Requester;
 import info.openurl.oom.entities.ServiceType;
+import org.oclc.oomRef.descriptors.ByValueMetadataImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.MessageDigest;
+import java.util.*;
 
 /**
  * The OpenURLJP2KService OpenURL Service
@@ -224,7 +212,7 @@ public class OpenURLJP2KService implements Service, FormatConstants {
         final DjatokaDecodeParam params = new DjatokaDecodeParam();
         String id = null;
 
-        if (kev.containsKey("region")) {
+        if (kev.containsKey("region") && !kev.get("region").isEmpty()) {
             params.setRegion(kev.get("region"));
         }
         if (kev.containsKey("format")) {
