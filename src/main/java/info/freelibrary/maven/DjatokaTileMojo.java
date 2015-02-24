@@ -99,12 +99,14 @@ public class DjatokaTileMojo extends AbstractPairtreeMojo {
 
             for (final File file : jp2List) {
                 final String id = PairtreeUtils.decodeID(file.getName());
+                // TODO safe encode ID
                 final URL url = new URL(StringUtils.format(METADATA_URL, port, id));
                 final JsonNode json = MAPPER.readTree(url.openStream());
 
                 // Pull out relevant info from our metadata service
                 final int width = json.get("width").asInt();
                 final int height = json.get("height").asInt();
+                // TODO use correct context path and servlet path (use single encoded id here)
                 final String[] tilePaths = tiler.getPaths("iiif", id, 256, width, height);
 
                 // If cache is to be overwritten, delete what's there so it will be recreated

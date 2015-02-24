@@ -92,6 +92,7 @@ public class TileCache {
         String urlString;
 
         try {
+            // TODO change to safe path encode
             String id = URLEncoder.encode(aID, "UTF-8");
             String baseURL = aServer + "view/image/" + id;
             URL url = new URL(baseURL + "/info.xml");

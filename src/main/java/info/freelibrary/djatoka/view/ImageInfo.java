@@ -146,8 +146,11 @@ public class ImageInfo {
 
         scaleFactors = rootNode.arrayNode();
 
+        int start = 1;
         for (int index = 0; index < myLevel; index++) {
-            scaleFactors.add(index + 1);
+            //scaleFactors.add(index + 1);
+            scaleFactors.add(start);
+            start >>= 1;
         }
 
         rootNode.put("scale_factors", scaleFactors);

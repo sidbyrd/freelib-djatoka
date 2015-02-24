@@ -1,14 +1,13 @@
 
 package info.freelibrary.djatoka.util;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-
+import info.freelibrary.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import info.freelibrary.util.StringUtils;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 
 public class OSDCacheUtil {
 
@@ -37,6 +36,7 @@ public class OSDCacheUtil {
         final String id;
 
         try {
+            // TODO replace with path safe encode
             id = URLEncoder.encode(aID, "UTF-8"); // Encode for IIIF Web service API
         } catch (final UnsupportedEncodingException details) {
             throw new RuntimeException(details); // All JVMs required to support UTF-8

@@ -112,6 +112,11 @@ public class ImageServlet extends HttpServlet implements Constants {
                 LOGGER.debug("Request is handled via the IIIFRequest shim");
             }
 
+            if (myCache == null) { // shouldn't actually be possible unless java.io.tmpdir wasn't there
+                LOGGER.error("Cache isn't configured correctly");
+                aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "tile cache not found");
+            }
+
             final ImageRequest imageRequest = (ImageRequest) iiif;
             final String scale = imageRequest.getSize().toString();
             final Region iiifRegion = imageRequest.getRegion();
@@ -133,15 +138,8 @@ public class ImageServlet extends HttpServlet implements Constants {
                 region = rsb.toString();
             }
 
-            if (myCache != null) {
-                checkImageCache(id, level, region, scale, rotation, aRequest, aResponse);
-            } else {
-                if (LOGGER.isWarnEnabled()) {
-                    LOGGER.warn("Cache isn't configured correctly");
-                }
-
-                serveNewImage(id, level, region, scale, rotation, aRequest, aResponse);
-            }
+            // serve the image tile, ideally from cache
+            checkImageCache(id, level, region, scale, rotation, aRequest, aResponse);
         } else {
 		    aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unrecognized IIIF message type");
 	    }
@@ -407,7 +405,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("{} served from Pairtree cache", imageFile);
             }
-        } else {
+        } else if (true /* TODO: make property for allowNonCachedTiles */) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("{} not found in cache", imageFile);
             }
