@@ -23,10 +23,20 @@ public interface Constants {
 
     public static final String INTERNAL_SERVER = "djatoka.server.internal";
 
+    /**
+     * key for 1 or more (space separated) regular expressions that match a Referent and return a URL-path-safe encoded identifier
+     */
     public static final String INGEST_VALIDATIONS = "djatoka.ingest.id.validations";
+
+    /**
+     * key for 1 or more (space separated) format patterns into which to inject a de-url-encoded identifier to fetch a JP2 image
+     */
     public static final String INGEST_HOSTS = "djatoka.ingest.id.hosts";
 
-    public static final String[] TIF_EXTS = new String[] { "tif", "tiff" };
+    /**
+     * key for 1 or more (comma separated) file extensions that, if found by ingester, may be converted to JP2
+     */
+    public static final String TIF_EXTS = "djatoka.ingest.data.exts";
 
     // Would be nicer to tell the regex filter to be case insensitive
     public static final String TIFF_FILE_PATTERN = "^[^\\.].*\\.(tif|tiff|TIF|TIFF|Tiff|Tif)$";

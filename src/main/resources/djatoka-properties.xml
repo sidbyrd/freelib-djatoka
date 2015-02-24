@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE properties SYSTEM "http://java.sun.com/dtd/properties.dtd">
 <properties>
-  <entry key="djatoka.ingest.data.exts">zyx</entry>
+  <entry key="djatoka.ingest.data.exts">tif,tiff</entry>
   <entry key="djatoka.ingest.data.dir">/dev/null</entry>
   <entry key="djatoka.ingest.file.maxSize">900</entry>
   <entry key="djatoka.ingest.jp2.dir">/server/data/djatoka/jp2cache</entry>

@@ -2,6 +2,7 @@
 package info.freelibrary.djatoka.ingest;
 
 import gov.lanl.adore.djatoka.util.IOUtils;
+import info.freelibrary.djatoka.Constants;
 import info.freelibrary.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,7 @@ import java.util.Properties;
  * 
  * @author <a href="mailto:ksclarke@gmail.com>Kevin S. Clarke</a>
  */
-public class IngestServlet extends HttpServlet {
+public class IngestServlet extends HttpServlet implements Constants {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IngestServlet.class);
 
@@ -73,7 +74,7 @@ public class IngestServlet extends HttpServlet {
     private String ingestFileSystem(final String aUnattendedRun, final ServletContext aServletContext)
             throws IOException {
         final String dir = aServletContext.getRealPath("/WEB-INF/classes") + "/";
-        final String propertiesFile = dir + info.freelibrary.djatoka.Constants.PROPERTIES_FILE;
+        final String propertiesFile = dir + PROPERTIES_FILE;
         final boolean unattended = aUnattendedRun != null;
         final ServletContext context = getServletContext();
         IngestThread thread = (IngestThread) context.getAttribute("ingest");
@@ -82,62 +83,63 @@ public class IngestServlet extends HttpServlet {
             LOGGER.debug("Loading properties file: {}", propertiesFile);
         }
 
+        Properties p;
         try {
-            final Properties p = IOUtils.loadConfigByPath(propertiesFile);
-            final String dataDir = p.getProperty("djatoka.ingest.data.dir");
-            final String jp2Dir = p.getProperty("djatoka.ingest.jp2.dir");
-            final String extString = p.getProperty("djatoka.ingest.data.exts");
-            final File src = new File(dataDir);
-            final File dest = new File(jp2Dir);
-            final String[] exts = extString.split(","); // TODO: support ; etc?
+            p = IOUtils.loadConfigByPath(propertiesFile);
+        } catch (Exception e) {
+            return "Failed to load properties file at path ='"+propertiesFile+"'";
+        }
+        final String dataDir = p.getProperty(TIFF_DATA_DIR);
+        final String jp2Dir = p.getProperty(JP2_DATA_DIR);
+        final String extString = p.getProperty(TIF_EXTS);
+        final File src = new File(dataDir);
+        final File dest = new File(jp2Dir);
+        final String[] exts = extString.split(","); // TODO: support ; etc?
 
-            if (thread != null) {
-                final int count = thread.getCount();
-                final StringBuilder data = new StringBuilder(" (");
+        if (thread != null) {
+            final int count = thread.getCount();
+            final StringBuilder data = new StringBuilder(" (");
 
-                data.append(dest.getUsableSpace() / 1024 / 1024);
-                data.append(" MB available on the disk)");
+            data.append(dest.getUsableSpace() / 1024 / 1024);
+            data.append(" MB available on the disk)");
 
-                if (thread.isFinished()) {
-                    context.removeAttribute("ingest");
-                    thread.cleanUp();
+            if (thread.isFinished()) {
+                context.removeAttribute("ingest");
+                thread.cleanUp();
 
-                    return StringUtils.format("Finished: {} ingested{}", Integer.toString(count), data.toString());
-                }
-
-                return "Ingesting... at number " + count + data;
+                return StringUtils.format("Finished: {} ingested{}", Integer.toString(count), data.toString());
             }
 
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Looking for '{}' files in {}", StringUtils.toString(exts, ' '), src.getAbsolutePath());
-            }
+            return "Ingesting... at number " + count + data;
+        }
 
-            if (src.exists()) {
-                if (!src.isDirectory() || !src.canRead()) {
-                    throw new IOException(StringUtils.format("{} cannot be read or is not a dir", src
-                            .getAbsolutePath()));
-                } else {
-                    if (unattended) {
-                        thread = new IngestThread(src, dest, exts, p, true);
-                    } else {
-                        thread = new IngestThread(src, dest, exts, p, false);
-                    }
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Looking for '{}' files in {}", StringUtils.toString(exts, ' '), src.getAbsolutePath());
+        }
 
-                    thread.start();
-                    context.setAttribute("ingest", thread);
-
-                    if (!unattended) {
-                        return "Ingesting... reload to see progress";
-                    }
-
-                    return ""; // no-one to see it anyway
-                }
-            } else {
-                throw new FileNotFoundException(StringUtils.format("Supplied source directory didn't exist: {}", src
+        if (src.exists()) {
+            if (!src.isDirectory() || !src.canRead()) {
+                throw new IOException(StringUtils.format("{} cannot be read or is not a dir", src
                         .getAbsolutePath()));
+            } else {
+                if (unattended) {
+                    thread = new IngestThread(src, dest, exts, p, true);
+                } else {
+                    thread = new IngestThread(src, dest, exts, p, false);
+                }
+
+                thread.start();
+                context.setAttribute("ingest", thread);
+
+                if (!unattended) {
+                    return "Ingesting... reload to see progress";
+                }
+
+                return ""; // no-one to see it anyway
             }
-        } catch (final Exception details) {
-            throw new IOException(details.getMessage(), details);
+        } else {
+            throw new FileNotFoundException(StringUtils.format("Supplied source directory didn't exist: {}", src
+                    .getAbsolutePath()));
         }
     }
 }

@@ -1,41 +1,26 @@
 
 package info.freelibrary.djatoka.ingest;
 
-import info.freelibrary.djatoka.Constants;
-
-import info.freelibrary.util.FileUtils;
-import info.freelibrary.util.Logger;
-import info.freelibrary.util.LoggerFactory;
-import info.freelibrary.util.RegexFileFilter;
-import info.freelibrary.util.DirFileFilter;
-import info.freelibrary.util.FileExtFileFilter;
-import info.freelibrary.util.PairtreeObject;
-import info.freelibrary.util.PairtreeUtils;
-import info.freelibrary.util.PairtreeRoot;
-
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
-
 import gov.lanl.adore.djatoka.DjatokaCompress;
 import gov.lanl.adore.djatoka.DjatokaEncodeParam;
 import gov.lanl.adore.djatoka.DjatokaException;
 import gov.lanl.adore.djatoka.ICompress;
 import gov.lanl.adore.djatoka.kdu.KduCompressExe;
-
-import java.io.File;
-import java.io.IOException;
-
-import java.util.Properties;
-
+import info.freelibrary.djatoka.Constants;
+import info.freelibrary.util.*;
 import nu.xom.Builder;
 import nu.xom.Nodes;
 import nu.xom.ParsingException;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.util.Properties;
+
 public class IngestThread extends Thread implements Constants {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IngestThread.class, "freelib-djatoka_messages");
-
-    private static final String MAX_SIZE = "djatoka.ingest.file.maxSize";
 
     private static final String ID_QUERY = "//id";
 
@@ -68,10 +53,8 @@ public class IngestThread extends Thread implements Constants {
      * @param aExts Extensions of the files to convert and ingest
      * @param aCfg A configuration to use for the ingest
      * @param aUnattendedRun Whether the ingest is attended by a person or not
-     * @throws Exception If there is a problem
      */
-    public IngestThread(File aSource, File aDest, String[] aExts, Properties aCfg, boolean aUnattendedRun)
-            throws Exception {
+    public IngestThread(File aSource, File aDest, String[] aExts, Properties aCfg, boolean aUnattendedRun) {
         super();
 
         mySource = aSource;
