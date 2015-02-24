@@ -262,7 +262,6 @@ public class ImageServlet extends HttpServlet implements Constants {
 
             try {
                 final PairtreeObject cacheObject = tileCache.getObject(id);
-                final ServletContext context = getServletContext();
                 final String filename = PairtreeUtils.encodeID(id);
                 final File xmlFile = new File(cacheObject, filename + ".xml");
 
@@ -297,6 +296,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                         LOGGER.debug("Returning width/height/levels: {}/{}/{}", width, height, levels);
                     }
                 } else {
+                    final ServletContext context = getServletContext();
                     inStream = context.getResource(XML_TEMPLATE).openStream();
 
                     if (xmlFile.exists()) {
