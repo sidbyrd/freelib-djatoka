@@ -9,7 +9,6 @@ import info.freelibrary.djatoka.iiif.*;
 import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.djatoka.util.URLEncode;
 import info.freelibrary.util.*;
-import javafx.scene.transform.Scale;
 import nu.xom.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
