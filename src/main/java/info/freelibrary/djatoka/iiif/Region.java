@@ -198,14 +198,14 @@ public class Region {
      * The way Djatoka wants it.
      * Uses region coords and scale if it will go with a level.
      * Uses region coords and region dims it it will go with a scale
-     * @param level the level this region goes with (or <=0 for no level)
+     * @param level the level this region goes with (or < 1 for no level)
      * @param scale the scale this region will go with
      * @return string to go in a svc.region= part of an OpenURL
      */
     public String toDjatokaString(int level, Size scale) {
         StringBuilder builder = new StringBuilder();
 
-        if (isFullSize() && level<=0) {
+        if (isFullSize() && level < 1) {
             // region+scale, but region is a no-op. done.
             builder.append("");
             return builder.toString();
@@ -222,7 +222,7 @@ public class Region {
         if (usesPercents()) {
             builder.append("pct:"); // will fail if level>0, but would need image dims to fix it, and never happens.
         }
-        if (scale.isFullSize() || level <= 0) {
+        if (scale.isFullSize() || level < 1) {
             // no level, or no scale: use region width
             builder.append(myHeight).append(',').append(myWidth);
         } else {

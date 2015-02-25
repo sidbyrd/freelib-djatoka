@@ -9,6 +9,7 @@ import info.freelibrary.djatoka.iiif.*;
 import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.djatoka.util.URLEncode;
 import info.freelibrary.util.*;
+import javafx.util.Pair;
 import nu.xom.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,172 +70,203 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     /** recently accessed Height, Width, and Level lookups, keyed by identifier */
     private static Map<String, int[]> recentHWL = null;
-    private static final int HWL_CACHE_SIZE = 500;
+    private static final int RECENT_HWL_SIZE = 500;
 
+    /**
+     * recently accessed tile filenames, keyed by URL
+     * value is HTTP status code, filename (or error message if code != SC_OK)
+     */
+    private static Map<String, Pair<Integer, String>> recentTiles = null;
+    private static final int RECENT_TILES_SIZE = 50000;
+    private static final String TILE_FAIL = ""; /// value if key URL causes an error response
+
+    /** for logging */
     private static final DecimalFormat df = new DecimalFormat("######.00000");
 
     @Override
     protected void doGet(final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws ServletException, IOException {
+
+        Pair<Integer, String> response = null;
         final IIIFRequest iiif = (IIIFRequest) aRequest.getAttribute(IIIFRequest.KEY);
+        String id;
+
 	    if (iiif == null) {
-		    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "IIIF format required");
-	    }
-
-	    String id = null;
-	    try {
-	        id = iiif.getIdentifier();
-	    } catch (NullPointerException e) { /**/ }
-	    if (id==null) {
-		    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "identifier required");
-	    }
-
-        final int[] hwl = getHeightWidthAndLevels(id, aRequest, aResponse);
-
-	    if (iiif instanceof InfoRequest) {
-            try {
-                final ImageInfo info = new ImageInfo(id, hwl[0], hwl[1], hwl[2]);
-                final ServletOutputStream outStream = aResponse.getOutputStream();
-
-                if (iiif.getExtension().equals("xml")) {
-                    info.toStream(outStream);
-                } else {
-                    final String server = getServer(aRequest); // needs to be the externally-accessible address
-
-                    // per IIIF spec, the prefix includes the contextPath already.
-                    final String prefix = iiif.getServicePrefix();
-
-                    info.addFormat("jpg"); // FIXME: Configurable options
-
-                    outStream.print(info.toJSON(server, prefix));
-                }
-
-                outStream.close();
-            } catch (final FileNotFoundException details) {
-                aResponse.sendError(HttpServletResponse.SC_NOT_FOUND, id + " not found");
-            }
-        } else if (iiif instanceof ImageRequest) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Request is handled via the IIIFRequest shim");
-            }
-
-            final ImageRequest imageRequest = (ImageRequest) iiif;
-            final Size scale = imageRequest.getSize();
-            final int sh = scale.getHeight(); // #osd-psychic is always -1
-            final int sw = scale.getWidth();
-            Region region = imageRequest.getRegion();
-            int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
-            int y = region.getY();
-            int rh = region.getHeight();
-            int rw = region.getWidth();
-            final float rotation = imageRequest.getRotation();
-
-            // validate that request is allowed
-            // #osd-psychic means not an IIIF restriction, but I know OpenSeaDragon should never do that with the config I'm using.
-            if (rotation != 0f) { // #osd-psychic OSD rotates on HTML canvas instead
-                aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "rotation must be 0");
-            } else if (sw > TILE_SIZE || sh > TILE_SIZE) {
-                aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "max tile size is "+TILE_SIZE);
-            } else if (sw != -1 && sh != -1) { // #osd-psychic avoid altered aspect ratio. Already guaranteed not *both* -1.
-                aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "may not specify both scaled dimensions");
-            } else if (region.usesPercents()) { // #osd-psychic percents use float math and make level calculations imprecise.
-                aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region may not use percent");
+            response = new Pair<Integer, String>(HttpServletResponse.SC_BAD_REQUEST, "IIIF format required");
+	    } else {
+            id = iiif.getIdentifier();
+            if (id==null) {
+                response = new Pair<Integer, String>(HttpServletResponse.SC_BAD_REQUEST, "identifier required");
             } else {
-                if (region.isFullSize()) { // I still need these values for error checking and level calculation
-                    x = 0;
-                    y = 0;
-                    rw = hwl[1]; // image width
-                    rh = hwl[0]; // image height
-                } else if (x==0 && y==0 && rw==hwl[1] && rh==hwl[0]) { // convert region that covers the entire image to "full"
+
+                if (iiif instanceof InfoRequest) {
                     try {
-                        region = new Region("full");
-                    } catch (IIIFException e) { /**/ }
-                }
-                if (x > hwl[1] || y > hwl[0]) {
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x/y coords not within image bounds");
-                }
+                        final int[] hwl = getHeightWidthAndLevels(id, aRequest, aResponse);
+                        final ImageInfo info = new ImageInfo(id, hwl[0], hwl[1], hwl[2]);
+                        final ServletOutputStream outStream = aResponse.getOutputStream();
 
-                // We bothered to encode our JP2s with these nifty high-quality preset levels. Let's use them!
-                // Even though IIIF only specifies in regions, a good client will request regions that match the way the levels were made.
+                        if (iiif.getExtension().equals("xml")) {
+                            info.toStream(outStream);
+                        } else {
+                            final String server = getServer(aRequest); // needs to be the externally-accessible address
 
-                int rs = 0; // compute the region square side length at that level (if not clipped in either direction because it goes past an edge)
-                int l = 0; // sqrt(rs), which works like a psuedo-level. We convert to a real Djatoka "level" at the end.
+                            // per IIIF spec, the prefix includes the contextPath already.
+                            final String prefix = iiif.getServicePrefix();
 
-                if (rw < hwl[1]-x) { // if region width isn't against the edge, it is the full square width
-                    rs=rw;
-                    l = log2(rs);
-                } else if (rh < hwl[0]-y) {  // if region height isn't against the edge, it is the full square height
-                    rs=rh;
-                    l = log2(rs);
-                } else if (sw > 0 && sw < TILE_SIZE) { // if scale width is less than TILE_SIZE, can extract rs from its value
-                    rs = (int)(TILE_SIZE*(hwl[1]-x)/sw); // sw = ceil[ TILE_SIZE * (width-x) / rs ]  => rs = floor[ TILE_SIZE * (width-x) / sw ]
-                    l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
-                    rs = 1<<l; // rs = 2^l
-                } else if (sh > 0 && sh < TILE_SIZE) { // if scale height is less than TILE_SIZE, can extract rs from its value
-                    rs = (int)(TILE_SIZE*(hwl[0]-y)/sh); // sh = ceil[ TILE_SIZE * (height-y) / rs ]  => rs = floor[ TILE_SIZE * (height-y) / sh ]
-                    l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
-                    rs = 1<<l; // rs = 2^l
-                } else { // no exact boundary--just use the first one bigger than will fit in given source region
-                    final int rbig = Math.max(rw, rh);
-                    l = log2(rbig) + (isExactPowerOf2(rbig)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
-                    rs = 1<<l; // rs = 2^l
-                }
+                            info.addFormat("jpg"); // FIXME: Configurable options
 
-                // At this point, we have rs = 2^l.
-                // In Djatoka-world, rs = 256 * 2^(maxImageLevels -level) == 2^(maxImageLevels -level +log2(TILESIZE)). So solve for "level".
-                int level = hwl[2] + TILE_LOG2 - l;
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
-                }
+                            outStream.print(info.toJSON(server, prefix));
+                        }
 
-                // Sometimes OSD sends a request corresponding to a more zoomed-out level than the top one.
-                // For example, it may do this for the navigator window.
-                if (level < 1) {
-                    level = 0; // just do a standard level-less Region request instead, as long as the other conditions still hold.
-                }
+                        outStream.close();
+                    } catch (final FileNotFoundException details) {
+                        aResponse.sendError(HttpServletResponse.SC_NOT_FOUND, id + " not found");
+                    }
+                } else if (iiif instanceof ImageRequest) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Request is handled via the IIIFRequest shim");
+                    }
 
-                // calculate what both scale dimensions should be, even if they are given as -1 for default.
-                final int realSh = Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE);
-                final int realSw = Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE);
+                    final int[] hwl = getHeightWidthAndLevels(id, aRequest, aResponse); // already cached if user requested metadata first
+                    final ImageRequest imageRequest = (ImageRequest) iiif;
+                    final Size scale = imageRequest.getSize();
+                    final int sh = scale.getHeight(); // with OpenSeaDragon, is always -1. Already guaranteed both are not -1.
+                    final int sw = scale.getWidth();
+                    Region region = imageRequest.getRegion();
+                    int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
+                    int y = region.getY();
+                    int rh = region.getHeight();
+                    int rw = region.getWidth();
+                    final float rotation = imageRequest.getRotation();
+                    int level = -1; // no level *yet*
 
-                // Finish validating that the request is allowed. All these are #osd-psychic. Together, they have the effect of ensuring
-                // no tiles are generated (and cached forever!) that we didn't intend to serve up.
-                if (level > hwl[2]) { // #osd-psychic
-                    LOGGER.debug("Scale level requested that is not in the range for this image: level="+level+", min=1, max="+hwl[2]);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale level "+level+" not in range (1,"+hwl[2]+") for image");
-                } else if (x % rs != 0 || y % rs != 0) { // #osd-psychic
-                    LOGGER.debug("Region x or y not evenly divisible by region size at this level: x="+x+", y="+y+", rs="+rs+", level="+level);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x and y coords "+x+","+y+" must fall on scale level boundary");
-                } else if (rh != Math.min(hwl[0]-y, rs)) { // #osd-psychic
-                    LOGGER.debug("Region height not right: rh="+rh+", H-y="+Integer.toString(hwl[0]-y)+", rs="+rs);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region height "+rh+" doesn't jibe. "
-                            +"Square region would be "+rs+", available height is "+Integer.toString(hwl[0]-y));
-                } else if (rw != Math.min(hwl[1]-x, rs)) { // #osd-psychic
-                    LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1] - x)+", rs="+rs);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width "+rw+" doesn't jibe. "
-                            +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1] - x));
-                } else if (sh != -1 && sh != realSh) { // #osd-psychic
-                    float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
-                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+df.format(raw)+"=~"+Math.round(raw));
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height "+sh+" doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+df.format(raw)+"=~"+Math.round(raw));
-                } else if (sw != -1 && sw != realSw) { // #osd-psychic
-                    float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
-                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+df.format(raw)+"=~"+Math.round(raw));
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sw+" doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+df.format(raw)+"=~"+Math.round(raw));
-                } else {
+                    if (x > hwl[1] || y > hwl[0]) {
+                        aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "region x/y coords not within image bounds");
+                        return;
+                    }
+                    // canonicalize region: if it is not "full" but could be, make it so
+                    if (x==0 && y==0 && rw==hwl[1] && rh==hwl[0]) {
+                        try {
+                            region = new Region("full");
+                        } catch (IIIFException e) { /**/ }
+                    }
 
-                    // make scale dimensions explicit -- it's required when using level, and doesn't hurt if not.
-                    scale.setExplicit(realSw, realSh);
+                    boolean requireOsdStyle = true;
+                    boolean requireLevels = true;
+                    boolean allowLowLevels = true;
+
+                    // if configured, don't allow requests that aren't expected when using OpenSeaDragon
+                    // Ensures that no tiles are generated (and cached forever!) with odd settings we didn't intend to serve up.
+                    if (requireOsdStyle) {
+                        if (sw != -1 && sh != -1) { // avoid altered aspect ratio.
+                            aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "may not specify both scaled dimensions");
+                        } else if (region.usesPercents()) { // percents use float math and make level calculations imprecise.
+                            aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region may not use percent");
+                        } else if (rotation != 0f) { // OSD rotates the HTML canvas instead
+                            aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "rotation must be 0");
+                        }
+                    }
+
+                    // We bothered to encode our JP2s with these nifty high-quality preset levels. Let's use them!
+                    // Even though IIIF protocol only speaks regions, good clients request them at standard power-of-two scales
+                    // and boundaries that can be translated into levels.
+                    if (requireLevels) {
+
+                        // this requires that the scaled output tile size be standard.
+                        if (sw > TILE_SIZE || sh > TILE_SIZE) {
+                            aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "max tile size is "+TILE_SIZE);
+                            return;
+                        }
+
+                        // Even if region is "full", I still need these values for error checking and level calculation
+                        if (region.isFullSize()) {
+                            x = 0;
+                            y = 0;
+                            rw = hwl[1]; // image width
+                            rh = hwl[0]; // image height
+                        }
+
+                        // Find the side length of the region in the image being requested.
+                        int rs = 0; // region square side length (if edges of image didn't interfere)
+                        int l = 0; // sqrt(rs), which works like a psuedo-level. We convert to a real Djatoka "level" at the end.
+
+                        if (rw < hwl[1]-x) { // if region width isn't against the edge, it is the full square width
+                            rs=rw;
+                            l = log2(rs);
+                        } else if (rh < hwl[0]-y) {  // if region height isn't against the edge, it is the full square height
+                            rs=rh;
+                            l = log2(rs);
+                        } else if (sw > 0 && sw < TILE_SIZE) { // if scale width is less than TILE_SIZE, can extract rs from its value
+                            rs = (int)(TILE_SIZE*(hwl[1]-x)/sw); // sw = ceil[ TILE_SIZE * (width-x) / rs ]  => rs = floor[ TILE_SIZE * (width-x) / sw ]
+                            l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
+                            rs = 1<<l; // rs = 2^l
+                        } else if (sh > 0 && sh < TILE_SIZE) { // if scale height is less than TILE_SIZE, can extract rs from its value
+                            rs = (int)(TILE_SIZE*(hwl[0]-y)/sh); // sh = ceil[ TILE_SIZE * (height-y) / rs ]  => rs = floor[ TILE_SIZE * (height-y) / sh ]
+                            l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
+                            rs = 1<<l; // rs = 2^l
+                        } else { // no exact boundary--just use the first one bigger than will fit in given source region
+                            final int rbig = Math.max(rw, rh);
+                            l = log2(rbig) + (isExactPowerOf2(rbig)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
+                            rs = 1<<l; // rs = 2^l
+                        }
+
+                        // At this point, we have rs = 2^l.
+                        // In Djatoka-world, rs = 256 * 2^(maxImageLevels -level) == 2^(maxImageLevels -level +log2(TILESIZE)). So solve for "level".
+                        level = hwl[2] + TILE_LOG2 - l;
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
+                        }
+
+                        // Sometimes even level 1 isn't zoomed out enough for OSD. It sometimes sends requests corresponding to
+                        // correct power-of-two region and scale for levels that would be <= 0. For example, thumbnail in navigator window.
+                        if (level < 1 && allowLowLevels) {
+                            level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
+                        }
+
+                        // calculate what both scale dimensions should be, even if they are given as -1 for default.
+                        final int explicitSh = Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE);
+                        final int explicitSw = Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE);
+
+                        // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
+                        // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
+                        String errorMessage = null;
+                        int errorHttpCode = HttpServletResponse.SC_BAD_REQUEST; /// default if there is an error, unless changed
+                        if (level > hwl[2]) {
+                            errorMessage = "scale level "+level+" requested that is deeper than this image's max of "+hwl[2];
+                        } else if (x % rs != 0 || y % rs != 0) {
+                            errorMessage = "region x and y coords "+x+","+y+" must fall evenly on boundary of "+rs+" when level is"+level;
+                        } else if (rh != Math.min(hwl[0]-y, rs)) {
+                            errorMessage = "region height "+rh+" should be "+Math.min(hwl[0]-y, rs)+" when region size is "+rs
+                                           +" and bottom edge is "+Integer.toString(hwl[0]-y)+" away";
+                        } else if (rw != Math.min(hwl[1]-x, rs)) {
+                            errorMessage = "region width "+rw+" should be "+Math.min(hwl[1]-x, rs)+" when region size is "+rs
+                                           +" and right edge is "+Integer.toString(hwl[1]-x)+" away";
+                        } else if (sh != -1 && sh != explicitSh) {
+                            final float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
+                            errorMessage = "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
+                                           +" (~"+Math.round(raw)+" away after scaling";
+                        } else if (sw != -1 && sw != explicitSw) {
+                            final float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
+                            errorMessage = "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
+                                           +" (~"+Math.round(raw)+" away after scaling";
+                        }
+                        if (errorMessage != null) {
+                            LOGGER.debug(errorMessage);
+                            aResponse.sendError(errorHttpCode, errorMessage);
+                            return;
+                        }
+
+                        // make scale dimensions explicit -- it's required when using level (and doesn't hurt when not)
+                        scale.setExplicit(explicitSw, explicitSh);
+                    }
 
                     // All good! Serve the image tile, ideally from cache
                     checkImageCache(id, level, region, scale, rotation, aRequest, aResponse);
+                } else {
+                    aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unrecognized IIIF message type");
                 }
             }
-        } else {
-		    aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unrecognized IIIF message type");
-	    }
+        }
     }
 
     /**
@@ -281,6 +313,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             try {
                 tileCache = new PairtreeRoot(cacheDir);
             } catch (IOException details) {
+                // properly configured cache is mandatory
                 LOGGER.error("Unable to load tile cache directory: {}", details.getMessage());
                 throw new ServletException(details.getMessage());
             }
@@ -307,13 +340,14 @@ public class ImageServlet extends HttpServlet implements Constants {
             LOGGER.error("No registrations found for servlet 'resolver': {}", e.getMessage());
         }
         if (resolverPath == null) {
-            // didn't work? Shouldn't fail here, so just fake something.
+            // didn't work? Maybe we can fake something.
             resolverPath = "/resolver";
         }
         LOGGER.debug("IIIF servlet using resolver URL of {}", resolverPath);
 
-        // init cache with 3rd LinkedHashMap param true to keep the list side in access/insert order
-        recentHWL = Collections.synchronizedMap(new LruCache<String, int[]>(HWL_CACHE_SIZE));
+        // init lookup LRU caches for oft-repeated calculations
+        recentHWL = Collections.synchronizedMap(new LruCache<String, int[]>(RECENT_HWL_SIZE));
+        recentTiles = Collections.synchronizedMap(new LruCache<String, String>(RECENT_TILES_SIZE));
     }
 
     /* this is incorrect for 2 reasons:
