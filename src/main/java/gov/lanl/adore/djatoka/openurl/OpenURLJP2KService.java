@@ -445,7 +445,7 @@ public class OpenURLJP2KService implements Service, FormatConstants {
                 hash = null;
             }
 
-            final String f = CacheUtils.getFileName(level, region, scale, rotation);
+            final String f = CacheUtils.getFileName(level, region, scale, rotation, false);
             id = id + "_" + f;
 
             if (LOGGER.isDebugEnabled()) {

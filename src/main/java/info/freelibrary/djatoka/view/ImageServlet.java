@@ -43,7 +43,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     private static final String RESOLVE_IMAGE_QUERY = "?url_ver=Z39.88-2004&rft_id={}"
             + "&svc_id=info:lanl-repo/svc/getRegion" + "&svc_val_fmt=info:ofi/fmt:kev:mtx:jpeg2000"
-            + "&svc.format={}&svc.level={}&svc.rotate={}&svc.region={}&svc.scale={}";
+            + "&svc.format={}&svc.level={}&svc.rotate={}&svc.region={}";
 
     private static final String RESOLVE_REGION_QUERY = "?url_ver=Z39.88-2004&rft_id={}"
             + "&svc_id=info:lanl-repo/svc/getRegion" + "&svc_val_fmt=info:ofi/fmt:kev:mtx:jpeg2000"
@@ -528,7 +528,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
         if (aLevel > 0) {
             values = new String[] { safeID, DEFAULT_VIEW_FORMAT, String.valueOf(aLevel), Integer.toString((int) aRotation),
-                    aRegion.toDjatokaString(), aScale.toDjatokaString() };
+                    aRegion.toDjatokaString() };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
             if (LOGGER.isDebugEnabled()) {
