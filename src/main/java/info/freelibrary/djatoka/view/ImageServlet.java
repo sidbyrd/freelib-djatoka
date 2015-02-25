@@ -191,26 +191,26 @@ public class ImageServlet extends HttpServlet implements Constants {
                     aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Level miscalculation: rs="+rs+", l="+l);
                 } else if (level < 1 || level > hwl[2]) {
                     LOGGER.debug("Scale level requested that is not in the range for this image: level="+level+", min=1, max="+hwl[2]);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale level not in range for image: level="+level+", min=1, max="+hwl[2]);
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale level "+level+" not in range (1,"+hwl[2]+") for image");
                 } else if (x % rs != 0 || y % rs != 0) {
                     LOGGER.debug("Region x or y not evenly divisible by region size at this level: x="+x+", y="+y+", rs="+rs+", level="+level);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x and y coords must fall on scale level boundary");
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x and y coords "+x+","+y+" must fall on scale level boundary");
                 } else if (rh != Math.min(hwl[0]-y, rs)) {
                     LOGGER.debug("Region height not right: rh="+rh+", H-y="+Integer.toString(hwl[0]-y)+", rs="+rs);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region height doesn't jibe. "
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region height "+rh+" doesn't jibe. "
                             +"Square region would be "+rs+", available height is "+Integer.toString(hwl[0]-y));
                 } else if (rw != Math.min(hwl[1]-x, rs)) {
                     LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1]-x)+", rs="+rs);
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width doesn't jibe. "
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width "+rw+" doesn't jibe. "
                             +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
                 } else if (sh != -1 && sh != Math.min(TILE_SIZE*(hwl[0]-y)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+Integer.toString(TILE_SIZE*(hwl[0]-y)/rs));
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+Integer.toString(TILE_SIZE*(hwl[0]-y)/rs));
+                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+Float.toString(TILE_SIZE*(hwl[0]-y)/rs));
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height "+sh+" doesn't jibe. "
+                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+Float.toString(TILE_SIZE*(hwl[0]-y)/rs));
                 } else if (sw != -1 && sw != Math.min(TILE_SIZE*(hwl[1]-x)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+Integer.toString(TILE_SIZE*(hwl[1]-x)/rs));
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+Integer.toString(TILE_SIZE*(hwl[1]-x)/rs));
+                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+Float.toString(TILE_SIZE*(hwl[1]-x)/rs));
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sh+" doesn't jibe. "
+                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+Float.toString(TILE_SIZE*(hwl[1]-x)/rs));
                 } else {
 
                     // All good! Serve the image tile, ideally from cache
