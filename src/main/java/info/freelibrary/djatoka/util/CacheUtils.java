@@ -24,36 +24,28 @@ public class CacheUtils {
      */
     public static String getFileName(final String aLevel, final String aRegion, final String aScale,
             final float aRotation) {
-        return getFileName(aLevel, aRegion, aScale, aRotation, true);
-    }
-
-    public static String getFileName(final String aLevel, final String aRegion, final String aScale,
-            final float aRotation, boolean useOldNames) {
         final StringBuilder cfName = new StringBuilder("image_");
         final String region = isEmpty(aRegion) ? "full" : aRegion.replace(',', '-');
         final String scale = isEmpty(aScale) ? "full" : aScale.replace(',', '-');
+        final boolean hasLevel = !isEmpty(aLevel) && !aLevel.contains("-") && !aLevel.equals("0");
 
-        if (useOldNames && !isEmpty(aLevel) && !aLevel.equals("-1") && region.equals("full")) {
-            // backwards compatibility name with level but no region or scale
+        if (hasLevel) {
+            // level and regionScale
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Checking cache for level-oriented tile");
             }
 
-            cfName.append(aLevel);
-        } else if (useOldNames && isEmpty(aLevel)){
-            // backwards compatibility name with region and scale but no level
+            cfName.append(aLevel).append('_').append(region);
+        } else {
+            // region and scale
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Checking cache for scale-oriented tile");
             }
 
             cfName.append(scale).append('_').append(region);
-        } else {
-            // not using old names, or need a name with all three components anyways
-            // level_region_scale_rotation--same order as everything else around here.
-            cfName.append(aLevel).append('_').append(region).append('_').append(scale);
         }
 
-        if (!useOldNames || aRotation != 0.0f) {
+        if (aRotation != 0.0f) {
             cfName.append('_').append((int) aRotation); // djatoka expects int
         }
 
@@ -62,7 +54,7 @@ public class CacheUtils {
 
     public static String getFileName(final int aLevel, final Region aRegion, final Size aScale,
             final float aRotation) {
-        return getFileName(String.valueOf(aLevel), aRegion.toDjatokaString(), aScale.toDjatokaString(), aRotation, false);
+        return getFileName(String.valueOf(aLevel), aRegion.toDjatokaString(), aScale.toDjatokaString(), aRotation);
     }
 
 

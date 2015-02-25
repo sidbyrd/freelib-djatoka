@@ -190,7 +190,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 // Sometimes OSD sends a request corresponding to a more zoomed-out level than the top one.
                 // For example, it may do this for the navigator window.
                 if (level < 1) {
-                    level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
+                    level = 0; // just do a standard level-less Region request instead, as long as the other conditions still hold.
                 }
 
                 // calculate what both scale dimensions should be, even if they are given as -1 for default.
@@ -535,13 +535,13 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
         if (aLevel > 0) {
             values = new String[] { safeID, DEFAULT_VIEW_FORMAT, String.valueOf(aLevel), Integer.toString((int) aRotation),
-                    aRegion.toDjatokaStringWithScale(aScale) };
+                    aRegion.toDjatokaString(aLevel, aScale) };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Image requested with no level specified: id={} region={} scale={}", aID, aRegion, aScale);
             }
-            values = new String[] { safeID, DEFAULT_VIEW_FORMAT, aRegion.toDjatokaString(), aScale.toDjatokaString(),
+            values = new String[] { safeID, DEFAULT_VIEW_FORMAT, aRegion.toDjatokaString(aLevel, aScale), aScale.toDjatokaString(),
                     Integer.toString((int) aRotation) };
             url = resolverPath +StringUtils.format(RESOLVE_REGION_QUERY, values);
         }

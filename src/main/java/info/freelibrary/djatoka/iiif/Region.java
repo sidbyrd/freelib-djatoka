@@ -195,43 +195,38 @@ public class Region {
     }
 
     /**
-     * The way Djatoka wants it *only* if there's a region and scale, but no level
-     * @return string to go in a svc.region= part of an OpenURL with a separate svc.scale and no svc.level
+     * The way Djatoka wants it.
+     * Uses region coords and scale if it will go with a level.
+     * Uses region coords and region dims it it will go with a scale
+     * @param level the level this region goes with (or <=0 for no level)
+     * @param scale the scale this region will go with
+     * @return string to go in a svc.region= part of an OpenURL
      */
-    public String toDjatokaString() {
+    public String toDjatokaString(int level, Size scale) {
         StringBuilder builder = new StringBuilder();
 
-        if (isFullSize()) {
+        if (isFullSize() && level<=0) {
+            // region+scale, but region is a no-op. done.
             builder.append("");
-        } else {
-            builder.append(myY).append(',').append(myX).append(',');
-            if (usesPercents()) {
-                builder.append(Math.ceil(myY * myHeight / 100)).append(',').append(Math.ceil(myX*myWidth/100));
-            } else {
-                builder.append(myHeight).append(',').append(myWidth);
-            }
+            return builder.toString();
         }
 
-        return builder.toString();
-    }
-
-    /**
-     * The way Djatoka wants it *only* if there's a level and region
-     * @return string to go in a svc.region= part of an OpenURL with a svc.level also
-     */
-    public String toDjatokaStringWithScale(Size scale) {
-        StringBuilder builder = new StringBuilder();
-
+        // coords
         if (isFullSize()) {
+            // level and regionScale requires coords
             builder.append("0,0,");
         } else {
             builder.append(myY).append(',').append(myX).append(',');
         }
 
-        // TODO: cannot be percent; would need image dims.
-        if (scale.isFullSize()) {
+        if (usesPercents()) {
+            builder.append("pct:"); // will fail if level>0, but would need image dims to fix it, and never happens.
+        }
+        if (scale.isFullSize() || level <= 0) {
+            // no level, or no scale: use region width
             builder.append(myHeight).append(',').append(myWidth);
         } else {
+            // using level: use scale
             builder.append(scale.getHeight()).append(',').append(scale.getWidth());
         }
 
