@@ -110,6 +110,14 @@ public class Size {
         }
     }
 
+    public void setExplicit(int width, int height) {
+        myAspectRatioIsPreserved = false;
+        myHeight = height;
+        mySizeIsFull = false;
+        mySizeIsPercent = false;
+        myWidth = width;
+    }
+
     /**
      * Returns true if the request is for a full-size image; else, false.
      * 

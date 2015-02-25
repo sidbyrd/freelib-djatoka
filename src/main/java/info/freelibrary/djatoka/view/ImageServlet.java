@@ -9,6 +9,7 @@ import info.freelibrary.djatoka.iiif.*;
 import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.djatoka.util.URLEncode;
 import info.freelibrary.util.*;
+import javafx.scene.transform.Scale;
 import nu.xom.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -192,7 +193,11 @@ public class ImageServlet extends HttpServlet implements Constants {
                 if (level < 1) {
                     level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
                 }
-                
+
+                // calculate what both scale dimensions should be, even if they are given as -1 for default.
+                final int realSh = Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE);
+                final int realSw = Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE);
+
                 // Finish validating that the request is allowed. All these are #osd-psychic. Together, they have the effect of ensuring
                 // no tiles are generated (and cached forever!) that we didn't intend to serve up.
                 if (level > hwl[2]) { // #osd-psychic
@@ -206,20 +211,23 @@ public class ImageServlet extends HttpServlet implements Constants {
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region height "+rh+" doesn't jibe. "
                             +"Square region would be "+rs+", available height is "+Integer.toString(hwl[0]-y));
                 } else if (rw != Math.min(hwl[1]-x, rs)) { // #osd-psychic
-                    LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1]-x)+", rs="+rs);
+                    LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1] - x)+", rs="+rs);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width "+rw+" doesn't jibe. "
-                            +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
-                } else if (sh != -1 && sh != Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE)) { // #osd-psychic
+                            +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1] - x));
+                } else if (sh != -1 && sh != realSh) { // #osd-psychic
                     float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
                     LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+df.format(raw)+"=~"+Math.round(raw));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height "+sh+" doesn't jibe. "
                             +"Square tile size would be "+TILE_SIZE+", available height scales to "+df.format(raw)+"=~"+Math.round(raw));
-                } else if (sw != -1 && sw != Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE)) { // #osd-psychic
+                } else if (sw != -1 && sw != realSw) { // #osd-psychic
                     float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
                     LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+df.format(raw)+"=~"+Math.round(raw));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sw+" doesn't jibe. "
                             +"Square tile size would be "+TILE_SIZE+", available width scales to "+df.format(raw)+"=~"+Math.round(raw));
                 } else {
+
+                    // make scale dimensions explicit -- it's required when using level, and doesn't hurt if not.
+                    scale.setExplicit(realSw, realSh);
 
                     // All good! Serve the image tile, ideally from cache
                     checkImageCache(id, level, region, scale, rotation, aRequest, aResponse);

@@ -227,7 +227,13 @@ public class Region {
         } else {
             builder.append(myY).append(',').append(myX).append(',');
         }
-        builder.append(scale.getWidth()).append(',').append(scale.getHeight());
+
+        // TODO: cannot be percent; would need image dims.
+        if (scale.isFullSize()) {
+            builder.append(myWidth).append(',').append(myHeight);
+        } else {
+            builder.append(scale.getWidth()).append(',').append(scale.getHeight());
+        }
 
         return builder.toString();
     }
