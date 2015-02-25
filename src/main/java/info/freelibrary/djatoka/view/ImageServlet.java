@@ -200,11 +200,11 @@ public class ImageServlet extends HttpServlet implements Constants {
                     LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1]-x)+", rs="+rs);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width doesn't jibe. "
                             +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
-                } else if (sh != -1 && sh != Math.min(hwl[0]-y,TILE_SIZE)) {
+                } else if (sh != -1 && sh != Math.min(TILE_SIZE*(hwl[0]-y)/rs,TILE_SIZE)) {
                     LOGGER.debug("Scale height not right: sh="+sw+", H-y="+Integer.toString(hwl[0]-y));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height doesn't jibe. "
                             +"Square tile size would be "+TILE_SIZE+", available height is "+Integer.toString(hwl[0]-y));
-                } else if (sw != -1 && sw != Math.min(hwl[1]-x,TILE_SIZE)) {
+                } else if (sw != -1 && sw != Math.min(TILE_SIZE*(hwl[1]-x)/rs,TILE_SIZE)) {
                     LOGGER.debug("Scale width not right: sw="+sw+", W-x="+Integer.toString(hwl[1]-x));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width doesn't jibe. "
                             +"Square tile size would be "+TILE_SIZE+", available width is "+Integer.toString(hwl[1]-x));
