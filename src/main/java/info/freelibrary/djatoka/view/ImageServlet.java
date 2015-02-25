@@ -278,7 +278,12 @@ public class ImageServlet extends HttpServlet implements Constants {
                 // All good! Serve the image tile, ideally from cache
                 String cachedFilename = serveImageWithCaching(id, level, region, scale, rotation, aRequest, aResponse);
                 if (cachedFilename != null) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Adding served image filename to recentTiles cache:\n{} -> {}", aRequest.getRequestURI(), cachedFilename);
+                    }
                     recentTiles.put(aRequest.getRequestURI(), new AbstractMap.SimpleImmutableEntry<Integer, String>(HttpServletResponse.SC_OK, cachedFilename));
+                } else if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Not adding served image filename to recentTiles cache:\n{} -> null", aRequest.getRequestURI());
                 }
             }
         } else {
