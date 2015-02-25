@@ -201,13 +201,13 @@ public class ImageServlet extends HttpServlet implements Constants {
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width doesn't jibe. "
                             +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
                 } else if (sh != -1 && sh != Math.min(TILE_SIZE*(hwl[0]-y)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale height not right: sh="+sw+", H-y="+Integer.toString(hwl[0]-y));
+                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+Integer.toString(TILE_SIZE*(hwl[0]-y)/rs));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available height is "+Integer.toString(hwl[0]-y));
+                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+Integer.toString(TILE_SIZE*(hwl[0]-y)/rs));
                 } else if (sw != -1 && sw != Math.min(TILE_SIZE*(hwl[1]-x)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale width not right: sw="+sw+", W-x="+Integer.toString(hwl[1]-x));
+                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+Integer.toString(TILE_SIZE*(hwl[1]-x)/rs));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available width is "+Integer.toString(hwl[1]-x));
+                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+Integer.toString(TILE_SIZE*(hwl[1]-x)/rs));
                 } else {
 
                     // All good! Serve the image tile, ideally from cache
