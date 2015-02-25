@@ -245,7 +245,7 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @return whether n is a power of 2
      */
     private static boolean isExactPowerOf2(int n) {
-        return (n & (n-1)) != 0;
+        return (n & (n-1)) == 0;
     }
 
     @Override
