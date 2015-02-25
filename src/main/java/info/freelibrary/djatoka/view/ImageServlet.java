@@ -43,7 +43,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     private static final String RESOLVE_IMAGE_QUERY = "?url_ver=Z39.88-2004&rft_id={}"
             + "&svc_id=info:lanl-repo/svc/getRegion" + "&svc_val_fmt=info:ofi/fmt:kev:mtx:jpeg2000"
-            + "&svc.format={}&svc.level={}&svc.rotate={}&svc.region={}";
+            + "&svc.format={}&svc.level={}&svc.rotate={}&svc.region={}&svc.scale={}";
 
     private static final String RESOLVE_REGION_QUERY = "?url_ver=Z39.88-2004&rft_id={}"
             + "&svc_id=info:lanl-repo/svc/getRegion" + "&svc_val_fmt=info:ofi/fmt:kev:mtx:jpeg2000"
@@ -122,7 +122,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             final Size scale = imageRequest.getSize();
             final int sh = scale.getHeight(); // #osd-psychic is always -1
             final int sw = scale.getWidth();
-            final Region region = imageRequest.getRegion();
+            Region region = imageRequest.getRegion();
             int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
             int y = region.getY();
             int rh = region.getHeight();
@@ -145,13 +145,20 @@ public class ImageServlet extends HttpServlet implements Constants {
                     y = 0;
                     rw = hwl[1]; // image width
                     rh = hwl[0]; // image height
+                } else if (x==0 && y==0 && rw==hwl[1] && rh==hwl[0]) { // convert region that covers the entire image to "full"
+                    try {
+                        region = new Region("full");
+                    } catch (IIIFException e) { /**/ }
                 }
                 if (x > hwl[1] || y > hwl[0]) {
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x/y coords not within image bounds");
                 }
 
-                int l = 0; // compute the djatoka "level" to request tile at
-                int rs = 0; // compute the square region size at that level (if not clipped in either direction because it goes past an edge)
+                // We bothered to encode our JP2s with these nifty high-quality preset levels. Let's use them!
+                // Even though IIIF only specifies in regions, a good client will request regions that match the way the levels were made.
+
+                int rs = 0; // compute the region square side length at that level (if not clipped in either direction because it goes past an edge)
+                int l = 0; // sqrt(rs), which works like a psuedo-level. We convert to a real Djatoka "level" at the end.
 
                 if (rw < hwl[1]-x) { // if region width isn't against the edge, it is the full square width
                     rs=rw;
@@ -161,57 +168,53 @@ public class ImageServlet extends HttpServlet implements Constants {
                     l = log2(rs);
                 } else if (sw > 0 && sw < TILE_SIZE) { // if scale width is less than TILE_SIZE, can extract rs from its value
                     rs = (int)(TILE_SIZE*(hwl[1]-x)/sw); // sw = ceil[ TILE_SIZE * (width-x) / rs ]  => rs = floor[ TILE_SIZE * (width-x) / sw ]
-                    if ((rs & (rs-1)) != 0) { // quick check whether rs is an even power of two
-                        l = 1; // not even power - add 1 to upcoming log2(s) calculation
-                    }
-                    l = l + log2(rs);
-                    rs = 1<<l; // 2^l
+                    l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
+                    rs = 1<<l; // rs = 2^l
                 } else if (sh > 0 && sh < TILE_SIZE) { // if scale height is less than TILE_SIZE, can extract rs from its value
                     rs = (int)(TILE_SIZE*(hwl[0]-y)/sh); // sh = ceil[ TILE_SIZE * (height-y) / rs ]  => rs = floor[ TILE_SIZE * (height-y) / sh ]
-                    if ((rs & (rs-1)) != 0) { // quick check whether rs is an even power of two
-                        l = 1; // not even power - add 1 to upcoming log2(s) calculation
-                    }
-                    l = l + log2(rs);
-                    rs = 1<<l; // 2^l
+                    l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
+                    rs = 1<<l; // rs = 2^l
                 } else { // no exact boundary--just use the first one bigger than will fit in given source region
                     final int rbig = Math.max(rw, rh);
-                    if ((rbig & (rbig-1)) != 0) { // quick check whether rbig is an even power of two
-                        l = 1; // not even power - add 1 to upcoming log2(s) calculation
-                    }
-                    l = l + log2(rbig);
-                    rs = 1<<l; // 2^l
+                    l = log2(rbig) + (isExactPowerOf2(rbig)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
+                    rs = 1<<l; // rs = 2^l
                 }
+
                 // At this point, we have rs = 2^l.
                 // In Djatoka-world, rs = 256 * 2^(maxImageLevels -level) == 2^(maxImageLevels -level +log2(TILESIZE)). So solve for "level".
-                final int level = hwl[2] + TILE_LOG2 - l;
+                int level = hwl[2] + TILE_LOG2 - l;
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
                 }
 
-                // finish validating that request is allowed. All these are #osd-psychic
-                if (rs != 1<<l) {
-                    LOGGER.warn("Level bug: rs=" + rs + ", l=" + l);
-                    aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Level miscalculation: rs="+rs+", l="+l);
-                } else if (level < 1 || level > hwl[2]) {
+                // Sometimes OSD sends a request corresponding to a more zoomed-out level than the top one.
+                // For example, it may do this for the navigator window.
+                if (level < 1) {
+                    level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
+                }
+                
+                // Finish validating that the request is allowed. All these are #osd-psychic. Together, they have the effect of ensuring
+                // no tiles are generated (and cached forever!) that we didn't intend to serve up.
+                if (level > hwl[2]) { // #osd-psychic
                     LOGGER.debug("Scale level requested that is not in the range for this image: level="+level+", min=1, max="+hwl[2]);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale level "+level+" not in range (1,"+hwl[2]+") for image");
-                } else if (x % rs != 0 || y % rs != 0) {
+                } else if (x % rs != 0 || y % rs != 0) { // #osd-psychic
                     LOGGER.debug("Region x or y not evenly divisible by region size at this level: x="+x+", y="+y+", rs="+rs+", level="+level);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x and y coords "+x+","+y+" must fall on scale level boundary");
-                } else if (rh != Math.min(hwl[0]-y, rs)) {
+                } else if (rh != Math.min(hwl[0]-y, rs)) { // #osd-psychic
                     LOGGER.debug("Region height not right: rh="+rh+", H-y="+Integer.toString(hwl[0]-y)+", rs="+rs);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region height "+rh+" doesn't jibe. "
                             +"Square region would be "+rs+", available height is "+Integer.toString(hwl[0]-y));
-                } else if (rw != Math.min(hwl[1]-x, rs)) {
+                } else if (rw != Math.min(hwl[1]-x, rs)) { // #osd-psychic
                     LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1]-x)+", rs="+rs);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width "+rw+" doesn't jibe. "
                             +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
-                } else if (sh != -1 && sh != Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE)) {
+                } else if (sh != -1 && sh != Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE)) { // #osd-psychic
                     float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
                     LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+df.format(raw)+"=~"+Math.round(raw));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height "+sh+" doesn't jibe. "
                             +"Square tile size would be "+TILE_SIZE+", available height scales to "+df.format(raw)+"=~"+Math.round(raw));
-                } else if (sw != -1 && sw != Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE)) {
+                } else if (sw != -1 && sw != Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE)) { // #osd-psychic
                     float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
                     LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+df.format(raw)+"=~"+Math.round(raw));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sw+" doesn't jibe. "
@@ -219,7 +222,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 } else {
 
                     // All good! Serve the image tile, ideally from cache
-                    checkImageCache(id, String.valueOf(level), region.toIiifString(), scale.toString(), rotation, aRequest, aResponse);
+                    checkImageCache(id, level, region, scale, rotation, aRequest, aResponse);
                 }
             }
         } else {
@@ -234,6 +237,15 @@ public class ImageServlet extends HttpServlet implements Constants {
      */
     private static int log2(int n) {
         return 31 - Integer.numberOfLeadingZeros(n);
+    }
+
+    /**
+     * Quick function to determine whether an int is an exact power of 2
+     * @param n number to check
+     * @return whether n is a power of 2
+     */
+    private static boolean isExactPowerOf2(int n) {
+        return (n & (n-1)) != 0;
     }
 
     @Override
@@ -473,7 +485,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         return result;
     }
 
-    private void checkImageCache(final String aID, final String aLevel, final String aRegion, final String aScale,
+    private void checkImageCache(final String aID, final int aLevel, final Region aRegion, final Size aScale,
             final float aRotation, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws IOException, ServletException {
         final PairtreeObject cacheObject = tileCache.getObject(aID);
@@ -504,7 +516,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
     }
 
-    private void serveNewImage(final String aID, final String aLevel, final String aRegion, final String aScale,
+    private void serveNewImage(final String aID, final int aLevel, final Region aRegion, final Size aScale,
             final float aRotation, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws IOException, ServletException {
         final String safeID = URLEncode.pathSafetyEncode(aID);
@@ -514,20 +526,17 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // Cast floats as integers because that's what djatoka expects
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
-        if (aLevel != null && aLevel.length() > 0) {
-            values = new String[] { safeID, DEFAULT_VIEW_FORMAT, aLevel, Integer.toString((int) aRotation), aRegion };
+        if (aLevel > 0) {
+            values = new String[] { safeID, DEFAULT_VIEW_FORMAT, String.valueOf(aLevel), Integer.toString((int) aRotation),
+                    aRegion.toDjatokaString(), aScale.toDjatokaString() };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Denied image requested with no level specified: id={} region={}", aID, aRegion);
+                LOGGER.debug("Image requested with no level specified: id={} region={} scale={}", aID, aRegion, aScale);
             }
-            aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "level required");
-            return;
-            
-            /*values =
-                    new String[] { safeID, DEFAULT_VIEW_FORMAT, aRegion, aScale.equals("full") ? "1.0" : aScale,
-                        Integer.toString((int) aRotation) };
-            url = resolverPath +StringUtils.format(RESOLVE_REGION_QUERY, values);*/
+            values = new String[] { safeID, DEFAULT_VIEW_FORMAT, aRegion.toDjatokaString(), aScale.toDjatokaString(),
+                    Integer.toString((int) aRotation) };
+            url = resolverPath +StringUtils.format(RESOLVE_REGION_QUERY, values);
         }
 
         // Right now we just let the OpenURL interface do the work

@@ -1,6 +1,8 @@
 
 package info.freelibrary.djatoka.util;
 
+import info.freelibrary.djatoka.iiif.Region;
+import info.freelibrary.djatoka.iiif.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,18 +17,22 @@ public class CacheUtils {
      * Return a file name for the cached file based on its characteristics.
      * 
      * @param aLevel A level to be cached
-     * @param aRegion A region to be cached
-     * @param aScale A scale to be cached
+     * @param aRegion A region to be cached (inDjatoka order)
+     * @param aScale A scale to be cached (using non-Djatoka "0" for default values)
      * @param aRotation A rotation to be cached
      * @return The file name for the cached file
      */
-    public static final String getFileName(final String aLevel, final String aRegion, final String aScale,
+    public static String getFileName(final String aLevel, final String aRegion, final String aScale,
             final float aRotation) {
+        return getFileName(aLevel, aRegion, aScale, aRotation, true);
+    }
+
+    public static String getFileName(final String aLevel, final String aRegion, final String aScale,
+            final float aRotation, boolean useOldNames) {
         final StringBuilder cfName = new StringBuilder("image_");
         final String region = isEmpty(aRegion) ? "full" : aRegion.replace(',', '-');
         final String scale = isEmpty(aScale) ? "full" : aScale.replace(',', '-');
 
-        final boolean useOldNames = false;
         if (useOldNames && !isEmpty(aLevel) && !aLevel.equals("-1") && region.equals("full")) {
             // backwards compatibility name with level but no region or scale
             if (LOGGER.isDebugEnabled()) {
@@ -54,6 +60,12 @@ public class CacheUtils {
         return cfName.append(".jpg").toString();
     }
 
+    public static String getFileName(final int aLevel, final Region aRegion, final Size aScale,
+            final float aRotation) {
+        return getFileName(String.valueOf(aLevel), aRegion.toString(), aScale.toString(), aRotation, false);
+    }
+
+
     /**
      * Gets the max level for the supplied height and width.
      * 
@@ -61,7 +73,7 @@ public class CacheUtils {
      * @param aWidth A width of the image
      * @return The maximum level using the supplied height and width
      */
-    public static final int getMaxLevel(final int aHeight, final int aWidth) {
+    public static int getMaxLevel(final int aHeight, final int aWidth) {
         return (int) Math.ceil(Math.log(Math.max(aHeight, aWidth)) / Math.log(2));
     }
 
@@ -71,7 +83,7 @@ public class CacheUtils {
      * @param aLevel A supplied image level
      * @return The scale for the supplied level
      */
-    public static final int getScale(final int aLevel) {
+    public static int getScale(final int aLevel) {
         return (int) Math.pow(2, aLevel);
     }
 
@@ -82,7 +94,7 @@ public class CacheUtils {
      * @param aWidth A supplied image width
      * @return The list of tile queries based on the supplied height and width
      */
-    public static final List<String> getCachingQueries(final int aHeight, final int aWidth) {
+    public static List<String> getCachingQueries(final int aHeight, final int aWidth) {
         final int maxLevel = getMaxLevel(aHeight, aWidth);
         final List<String> list = new ArrayList<String>();
 
@@ -128,8 +140,9 @@ public class CacheUtils {
      * @param aHeight An image height
      * @param aX An X coordinate
      * @param aY A Y coordinate
+     * @return String version of the given region
      */
-    public static final String getRegion(final int aLevel, final int aWidth, final int aHeight, final int aX,
+    public static String getRegion(final int aLevel, final int aWidth, final int aHeight, final int aX,
             final int aY) {
         // All the other code uses width, height (rather than height, width); I
         // should probably change to match their use pattern/order for

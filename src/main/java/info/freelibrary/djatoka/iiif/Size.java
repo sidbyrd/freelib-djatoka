@@ -201,11 +201,30 @@ public class Size {
                     builder.append('!').append(myWidth).append(',');
                     builder.append(myHeight);
                 } else if (hasHeight()) {
-                    builder.append("0,").append(myHeight);
+                    builder.append("0,").append(myHeight); // I rather suspect this was a hack just for filename purposes
                 } else {
                     builder.append(myWidth).append(",0");
                 }
             }
+        } else {
+            builder.append(myWidth).append(',').append(myHeight);
+        }
+
+        return builder.toString();
+    }
+
+    /**
+     * Returns as string the was a Djatoka OpenURL request likes it
+     * Basically, it's the same but a default value is -1, not 0.
+     * @return
+     */
+    public String toDjatokaString() {
+        final StringBuilder builder = new StringBuilder();
+
+        if (isFullSize()) {
+            builder.append("1.0");
+        } else if (isPercent()) {
+            builder.append(Float.toString((float) myPercent / 100));
         } else {
             builder.append(myWidth).append(',').append(myHeight);
         }

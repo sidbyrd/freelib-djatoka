@@ -194,7 +194,7 @@ public class Region {
         return builder.toString();
     }
 
-    public String toIiifString() {
+    public String toDjatokaString() {
         StringBuilder builder = new StringBuilder();
 
         if (isFullSize()) {
@@ -202,7 +202,7 @@ public class Region {
         } else {
             builder.append(myY).append(',').append(myX).append(',');
             if (usesPercents()) {
-                builder.append(Math.ceil(myY*myHeight/100)).append(',').append(Math.ceil(myX*myWidth/100));
+                builder.append(Math.ceil(myY * myHeight / 100)).append(',').append(Math.ceil(myX*myWidth/100));
             } else {
                 builder.append(myHeight).append(',').append(myWidth);
             }
