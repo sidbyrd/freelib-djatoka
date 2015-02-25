@@ -330,134 +330,131 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         int width = 0, height = 0, levels = 0;
 
-        if (tileCache != null) {
-            OutputStream outStream = null;
-            InputStream inStream = null;
+        OutputStream outStream = null;
+        InputStream inStream = null;
 
-            try {
-                final PairtreeObject cacheObject = tileCache.getObject(id);
-                final String filename = PairtreeUtils.encodeID(id);
-                final File xmlFile = new File(cacheObject, filename + ".xml");
+        try {
+            final PairtreeObject cacheObject = tileCache.getObject(id);
+            final String filename = PairtreeUtils.encodeID(id);
+            final File xmlFile = new File(cacheObject, filename + ".xml");
 
-                if (xmlFile.exists() && xmlFile.length() > 0) {
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Reading XML metadata file: " + xmlFile.getAbsolutePath());
-                    }
+            if (xmlFile.exists() && xmlFile.length() > 0) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Reading XML metadata file: " + xmlFile.getAbsolutePath());
+                }
 
-                    final Document xml = new Builder().build(xmlFile);
-                    final Element root = xml.getRootElement();
-                    final Element sElement = root.getFirstChildElement("Size");
-                    final String wString = sElement.getAttributeValue("Width");
-                    final String hString = sElement.getAttributeValue("Height");
-                    final Element lElement = root.getFirstChildElement("Levels");
+                final Document xml = new Builder().build(xmlFile);
+                final Element root = xml.getRootElement();
+                final Element sElement = root.getFirstChildElement("Size");
+                final String wString = sElement.getAttributeValue("Width");
+                final String hString = sElement.getAttributeValue("Height");
+                final Element lElement = root.getFirstChildElement("Levels");
 
-                    width = wString.equals("") ? 0 : Integer.parseInt(wString);
-                    height = hString.equals("") ? 0 : Integer.parseInt(hString);
+                width = wString.equals("") ? 0 : Integer.parseInt(wString);
+                height = hString.equals("") ? 0 : Integer.parseInt(hString);
 
-                    if (lElement != null) {
-                        try {
-                            levels = Integer.parseInt(lElement.getValue());
-                        } catch (final NumberFormatException details) {
-                            if (LOGGER.isErrorEnabled()) {
-                                LOGGER.error("{} doesn't look like an integer level", lElement.getValue());
-                            }
-
-                            levels = 0;
-                        }
-                    }
-
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Returning width/height/levels: {}/{}/{}", width, height, levels);
-                    }
-                } else if (true /* TODO: make property for whether to allow cache misses, for example when always pre-generating tiles */) {
-                    final ServletContext context = getServletContext();
-                    inStream = context.getResource(XML_TEMPLATE).openStream();
-
-                    if (xmlFile.exists()) {
-                        if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("XML metadata file exists: {}", xmlFile);
-                        }
-
-                        if (!xmlFile.delete() && LOGGER.isWarnEnabled()) {
-                            LOGGER.warn("File not deleted: {}", xmlFile);
-                        }
-                    }
-
-                    outStream = new FileOutputStream(xmlFile);
-
-                    if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Creating new xml metadata file: " + xmlFile.getAbsolutePath());
-                    }
-
-                    final Document xml = new Builder().build(inStream);
-                    final Serializer serializer = new Serializer(outStream);
-                    final String safeID = URLEncode.pathSafetyEncode(id);
-
+                if (lElement != null) {
                     try {
-                        String server;
-                        if (internalServer != null) {
-                            // refer to this server at a pre-configured internal URL, e.g. http://localhost:8080
-                            server = internalServer;
-                        } else {
-                            // refer to this server at the same publicly addressable name the user just did
-                            server = getServer(aRequest);
-                        }
-                        // construct URL with context path because we'll be dispatching it externally to this webapp.
-                        final URL url = new URL(server + contextPath
-                            + resolverPath + StringUtils.format(RESOLVE_METADATA_QUERY, safeID));
-
-                        if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("Querying image metadata: {}", url);
+                        levels = Integer.parseInt(lElement.getValue());
+                    } catch (final NumberFormatException details) {
+                        if (LOGGER.isErrorEnabled()) {
+                            LOGGER.error("{} doesn't look like an integer level", lElement.getValue());
                         }
 
-                        // issue JSON http request to myself and parse the output as JSON.
-                        // Ideally, I could just call the code directly, but the config and init setup for the
-                        //   Djatoka code isn't quite worth messing with.
-                        final JsonNode json = MAPPER.readTree(url.openStream());
-
-                        // Pull out relevant info from our metadata service
-                        width = json.get("width").asInt();
-                        height = json.get("height").asInt();
-                        levels = json.get("levels").asInt();
-
-                        final Element root = xml.getRootElement();
-                        final Element sElement = root.getFirstChildElement("Size");
-                        final Attribute wAttribute = sElement.getAttribute("Width");
-                        final Attribute hAttribute = sElement.getAttribute("Height");
-                        final Element lElement = root.getFirstChildElement("Levels");
-
-                        if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("Width: {}; Height: {}; Level: {}", width, height, levels);
-                        }
-
-                        // Save it in our xml file for easier access next time
-                        wAttribute.setValue(Integer.toString(width));
-                        hAttribute.setValue(Integer.toString(height));
-                        lElement.appendChild(Integer.toString(levels));
-
-                        serializer.write(xml);
-                        serializer.flush();
-                    } catch (final IIOException details) {
-                        if (details.getCause().getClass().getSimpleName().equals("FileNotFoundException")) {
-                            throw new FileNotFoundException(id + " not found");
-                        } else {
-                            if (LOGGER.isErrorEnabled()) {
-                                LOGGER.error("[{}] " + details.getMessage(), id, details);
-                            }
-
-                            throw details;
-                        }
+                        levels = 0;
                     }
                 }
-            } catch (final ParsingException details) {
-                aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, details.getMessage());
-            } finally {
-                IOUtils.closeQuietly(outStream);
-                IOUtils.closeQuietly(inStream);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Returning width/height/levels: {}/{}/{}", width, height, levels);
+                }
+            } else {
+                //TODO: make property for whether to allow cache misses, for example when always pre-generating tiles
+
+                final ServletContext context = getServletContext();
+                inStream = context.getResource(XML_TEMPLATE).openStream();
+
+                if (xmlFile.exists()) {
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("XML metadata file exists: {}", xmlFile);
+                    }
+
+                    if (!xmlFile.delete() && LOGGER.isWarnEnabled()) {
+                        LOGGER.warn("File not deleted: {}", xmlFile);
+                    }
+                }
+
+                outStream = new FileOutputStream(xmlFile);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Creating new xml metadata file: " + xmlFile.getAbsolutePath());
+                }
+
+                final Document xml = new Builder().build(inStream);
+                final Serializer serializer = new Serializer(outStream);
+                final String safeID = URLEncode.pathSafetyEncode(id);
+
+                try {
+                    String server;
+                    if (internalServer != null) {
+                        // refer to this server at a pre-configured internal URL, e.g. http://localhost:8080
+                        server = internalServer;
+                    } else {
+                        // refer to this server at the same publicly addressable name the user just did
+                        server = getServer(aRequest);
+                    }
+                    // construct URL with context path because we'll be dispatching it externally to this webapp.
+                    final URL url = new URL(server + contextPath
+                        + resolverPath + StringUtils.format(RESOLVE_METADATA_QUERY, safeID));
+
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Querying image metadata: {}", url);
+                    }
+
+                    // issue JSON http request to myself and parse the output as JSON.
+                    // Ideally, I could just call the code directly, but the config and init setup for the
+                    //   Djatoka code isn't quite worth messing with.
+                    final JsonNode json = MAPPER.readTree(url.openStream());
+
+                    // Pull out relevant info from our metadata service
+                    width = json.get("width").asInt();
+                    height = json.get("height").asInt();
+                    levels = json.get("levels").asInt();
+
+                    final Element root = xml.getRootElement();
+                    final Element sElement = root.getFirstChildElement("Size");
+                    final Attribute wAttribute = sElement.getAttribute("Width");
+                    final Attribute hAttribute = sElement.getAttribute("Height");
+                    final Element lElement = root.getFirstChildElement("Levels");
+
+                    if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Width: {}; Height: {}; Level: {}", width, height, levels);
+                    }
+
+                    // Save it in our xml file for easier access next time
+                    wAttribute.setValue(Integer.toString(width));
+                    hAttribute.setValue(Integer.toString(height));
+                    lElement.appendChild(Integer.toString(levels));
+
+                    serializer.write(xml);
+                    serializer.flush();
+                } catch (final IIOException details) {
+                    if (details.getCause().getClass().getSimpleName().equals("FileNotFoundException")) {
+                        throw new FileNotFoundException(id + " not found");
+                    } else {
+                        if (LOGGER.isErrorEnabled()) {
+                            LOGGER.error("[{}] " + details.getMessage(), id, details);
+                        }
+
+                        throw details;
+                    }
+                }
             }
-        } else {
-            // TODO: work around rather than throwing an exception
-            throw new ServletException("Cache not correctly configured");
+        } catch (final ParsingException details) {
+            aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, details.getMessage());
+        } finally {
+            IOUtils.closeQuietly(outStream);
+            IOUtils.closeQuietly(inStream);
         }
 
         int[] result = new int[] { height, width, levels };
@@ -485,7 +482,8 @@ public class ImageServlet extends HttpServlet implements Constants {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("{} served from Pairtree cache", imageFile);
             }
-        } else if (true /* TODO: make property for whether to allow cache misses, for example when always pre-generating tiles */) {
+        } else {
+            //TODO: make property for whether to allow cache misses, for example when always pre-generating tiles
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("{} not found in cache", imageFile);
             }
@@ -505,7 +503,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // Cast floats as integers because that's what djatoka expects
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
-        if (aLevel != null && aLevel != "") {
+        if (aLevel != null && aLevel.length() > 0) {
             values = new String[] { safeID, DEFAULT_VIEW_FORMAT, aLevel, Integer.toString((int) aRotation), aRegion };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
