@@ -71,7 +71,7 @@ public class ImageServlet extends HttpServlet implements Constants {
     private static Map<String, int[]> recentHWL = null;
     private static final int HWL_CACHE_SIZE = 500;
 
-    private static final DecimalFormat df = new DecimalFormat("######.#####");
+    private static final DecimalFormat df = new DecimalFormat("######.00000");
 
     @Override
     protected void doGet(final HttpServletRequest aRequest, final HttpServletResponse aResponse)
@@ -206,14 +206,14 @@ public class ImageServlet extends HttpServlet implements Constants {
                     LOGGER.debug("Region width not right: rw="+rw+", W-x="+Integer.toString(hwl[1]-x)+", rs="+rs);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width "+rw+" doesn't jibe. "
                             +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
-                } else if (sh != -1 && sh != Math.min(TILE_SIZE*(hwl[0]-y)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+df.format(TILE_SIZE*(hwl[0]-y)/rs));
+                } else if (sh != -1 && sh != Math.min(((float)(TILE_SIZE*(hwl[0]-y))/(float)rs,TILE_SIZE)) {
+                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+df.format((float)(TILE_SIZE*(hwl[0]-y))/(float)rs));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height "+sh+" doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+df.format(TILE_SIZE*(hwl[0]-y)/rs));
-                } else if (sw != -1 && sw != Math.min(TILE_SIZE*(hwl[1]-x)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+df.format(TILE_SIZE*(hwl[1]-x)/rs));
+                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+df.format((float)(TILE_SIZE*(hwl[0]-y))/(float)rs));
+                } else if (sw != -1 && sw != Math.min((float)(TILE_SIZE*(hwl[1]-x))/(float)rs,TILE_SIZE)) {
+                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+df.format((float)(TILE_SIZE*(hwl[1]-x))/(float)rs));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sw+" doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+df.format(TILE_SIZE*(hwl[1]-x)/rs));
+                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+df.format((float)(TILE_SIZE*(hwl[1]-x))/(float)rs));
                 } else {
 
                     // All good! Serve the image tile, ideally from cache
