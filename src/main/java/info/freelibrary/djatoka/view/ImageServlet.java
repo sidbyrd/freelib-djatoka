@@ -117,7 +117,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
             final ImageRequest imageRequest = (ImageRequest) iiif;
             final Size scale = imageRequest.getSize();
-            final int sh = scale.getHeight();
+            final int sh = scale.getHeight(); // #osd-psychic is always -1
             final int sw = scale.getWidth();
             final Region region = imageRequest.getRegion();
             int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
@@ -179,7 +179,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                     rs = 1<<l; // 2^l
                 }
                 // At this point, we have rs = 2^l.
-                // In Djatoka-world, rs = 256 * 2^(maxImageLevels - level) == 2^(maxImageLevels - level + log2(TILESIZE)). So solve for "level".
+                // In Djatoka-world, rs = 256 * 2^(maxImageLevels -level) == 2^(maxImageLevels -level +log2(TILESIZE)). So solve for "level".
                 final int level = hwl[2] + TILE_LOG2 - l;
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
@@ -189,6 +189,9 @@ public class ImageServlet extends HttpServlet implements Constants {
                 if (rs != 1<<l) {
                     LOGGER.warn("Level bug: rs="+rs+", l="+l);
                     aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Level miscalculation: rs="+rs+", l="+l);
+                } else if (level < 1 || level > hwl[2]) {
+                    LOGGER.debug("Scale level requested that is not in the range for this image: level="+level+", min=1, max="+hwl[2]);
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale level not in range for image: level="+level+", min=1, max="+hwl[2]);
                 } else if (x % rs != 0 || y % rs != 0) {
                     LOGGER.debug("Region x or y not evenly divisible by region size at this level: x="+x+", y="+y+", rs="+rs+", level="+level);
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region x and y coords must fall on scale level boundary");
