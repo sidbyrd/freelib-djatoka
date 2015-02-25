@@ -181,6 +181,9 @@ public class ImageServlet extends HttpServlet implements Constants {
                 // At this point, we have rs = 2^l.
                 // In Djatoka-world, rs = 256 * 2^(maxImageLevels - level) == 2^(maxImageLevels - level + log2(TILESIZE)). So solve for "level".
                 final int level = hwl[2] + TILE_LOG2 - l;
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
+                }
 
                 // finish validating that request is allowed. All these are #osd-psychic
                 if (rs != 1<<l) {
