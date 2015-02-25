@@ -267,7 +267,9 @@ public class ImageServlet extends HttpServlet implements Constants {
                                 +" (~"+Math.round(raw)+" away after scaling");
                     }
                     if (response != null) {
-                        LOGGER.debug(response.getValue());
+                        if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug(response.getValue());
+                        }
                         serveAndCache(response, aRequest, aResponse);
                         return;
                     }
