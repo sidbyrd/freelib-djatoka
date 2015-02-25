@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.net.URL;
+import java.text.DecimalFormat;
 import java.util.*;
 
 public class ImageServlet extends HttpServlet implements Constants {
@@ -69,6 +70,8 @@ public class ImageServlet extends HttpServlet implements Constants {
     /** recently accessed Height, Width, and Level lookups, keyed by identifier */
     private static Map<String, int[]> recentHWL = null;
     private static final int HWL_CACHE_SIZE = 500;
+
+    private static final DecimalFormat df = new DecimalFormat("######.#####");
 
     @Override
     protected void doGet(final HttpServletRequest aRequest, final HttpServletResponse aResponse)
@@ -187,7 +190,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
                 // finish validating that request is allowed. All these are #osd-psychic
                 if (rs != 1<<l) {
-                    LOGGER.warn("Level bug: rs="+rs+", l="+l);
+                    LOGGER.warn("Level bug: rs=" + rs + ", l=" + l);
                     aResponse.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Level miscalculation: rs="+rs+", l="+l);
                 } else if (level < 1 || level > hwl[2]) {
                     LOGGER.debug("Scale level requested that is not in the range for this image: level="+level+", min=1, max="+hwl[2]);
@@ -204,13 +207,13 @@ public class ImageServlet extends HttpServlet implements Constants {
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Region width "+rw+" doesn't jibe. "
                             +"Square region would be "+rs+", available width is "+Integer.toString(hwl[1]-x));
                 } else if (sh != -1 && sh != Math.min(TILE_SIZE*(hwl[0]-y)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+Float.toString(TILE_SIZE*(hwl[0]-y)/rs));
+                    LOGGER.debug("Scale height not right: sh="+sw+", available height scales to="+df.format(TILE_SIZE*(hwl[0]-y)/rs));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale height "+sh+" doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+Float.toString(TILE_SIZE*(hwl[0]-y)/rs));
+                            +"Square tile size would be "+TILE_SIZE+", available height scales to "+df.format(TILE_SIZE*(hwl[0]-y)/rs));
                 } else if (sw != -1 && sw != Math.min(TILE_SIZE*(hwl[1]-x)/rs,TILE_SIZE)) {
-                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+Float.toString(TILE_SIZE*(hwl[1]-x)/rs));
+                    LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+df.format(TILE_SIZE*(hwl[1]-x)/rs));
                     aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sw+" doesn't jibe. "
-                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+Float.toString(TILE_SIZE*(hwl[1]-x)/rs));
+                            +"Square tile size would be "+TILE_SIZE+", available width scales to "+df.format(TILE_SIZE*(hwl[1]-x)/rs));
                 } else {
 
                     // All good! Serve the image tile, ideally from cache
