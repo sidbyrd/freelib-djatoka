@@ -9,7 +9,6 @@ import info.freelibrary.djatoka.iiif.*;
 import info.freelibrary.djatoka.util.CacheUtils;
 import info.freelibrary.djatoka.util.URLEncode;
 import info.freelibrary.util.*;
-import javafx.util.Pair;
 import nu.xom.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +75,7 @@ public class ImageServlet extends HttpServlet implements Constants {
      * recently accessed tile filenames, keyed by URL
      * value is HTTP status code, filename (or error message if code != SC_OK)
      */
-    private static Map<String, Pair<Integer, String>> recentTiles = null;
+    private static Map<String, Map.Entry<Integer, String>> recentTiles = null;
     private static final int RECENT_TILES_SIZE = 50000;
 
     /** for logging */
@@ -126,7 +125,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
             // see if we already have a cached response: same file served, lots less mucking about with strings
             final String uri=aRequest.getRequestURI();
-            Pair<Integer, String> response = recentTiles.get(uri);
+            Map.Entry<Integer, String> response = recentTiles.get(uri);
 
             if (response != null) {
                 // serve the cached file or error
@@ -165,11 +164,14 @@ public class ImageServlet extends HttpServlet implements Constants {
                 // Ensures that no tiles are generated (and cached forever!) with odd settings we didn't intend to serve up.
                 if (requireOsdStyle) {
                     if (sw != -1 && sh != -1) { // avoid altered aspect ratio.
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST, "may not specify both scaled dimensions");
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                                "may not specify both scaled dimensions");
                     } else if (region.usesPercents()) { // percents use float math and make level calculations imprecise.
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST, "Region may not use percent");
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                                "region may not use percent");
                     } else if (rotation != 0f) { // OSD rotates the HTML canvas instead
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_NOT_IMPLEMENTED, "rotation must be 0");
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_NOT_IMPLEMENTED,
+                                "rotation must be 0");
                     }
                     if (response != null) {
                         serveAndCache(response, aRequest, aResponse);
@@ -240,27 +242,27 @@ public class ImageServlet extends HttpServlet implements Constants {
                     // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
                     // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
                     if (level > hwl[2]) {
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "scale level "+level+" requested that is deeper than this image's max of "+hwl[2]);
                     } else if (x % rs != 0 || y % rs != 0) {
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "region x and y coords "+x+","+y+" must fall evenly on boundary of "+rs+" when level is"+level);
                     } else if (rh != Math.min(hwl[0]-y, rs)) {
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "region height "+rh+" should be "+Math.min(hwl[0]-y, rs)+" when region size is "+rs
                                 +" and bottom edge is "+Integer.toString(hwl[0]-y)+" away");
                     } else if (rw != Math.min(hwl[1]-x, rs)) {
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "region width "+rw+" should be "+Math.min(hwl[1]-x, rs)+" when region size is "+rs
                                  +" and right edge is "+Integer.toString(hwl[1]-x)+" away");
                     } else if (sh != -1 && sh != explicitSh) {
                         final float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
                                 +" (~"+Math.round(raw)+" away after scaling");
                     } else if (sw != -1 && sw != explicitSw) {
                         final float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
-                        response = new Pair<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
+                        response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
                                 +" (~"+Math.round(raw)+" away after scaling");
                     }
@@ -276,7 +278,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 // All good! Serve the image tile, ideally from cache
                 String cachedFilename = serveImageWithCaching(id, level, region, scale, rotation, aRequest, aResponse);
                 if (cachedFilename != null) {
-                    recentTiles.put(aRequest.getRequestURI(), new Pair<Integer, String>(HttpServletResponse.SC_OK, cachedFilename));
+                    recentTiles.put(aRequest.getRequestURI(), new AbstractMap.SimpleImmutableEntry<Integer, String>(HttpServletResponse.SC_OK, cachedFilename));
                 }
             }
         } else {
@@ -295,9 +297,9 @@ public class ImageServlet extends HttpServlet implements Constants {
      */
     private static void serveAndCache(int code, String message,
                                       HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        serveAndCache(new Pair<Integer, String>(code, message), aRequest, aResponse);
+        serveAndCache(new AbstractMap.SimpleImmutableEntry<Integer, String>(code, message), aRequest, aResponse);
     }
-    private static void serveAndCache(Pair<Integer, String> response,
+    private static void serveAndCache(Map.Entry<Integer, String> response,
                                       HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
         if (response.getKey().equals(HttpServletResponse.SC_OK)) {
             try {
@@ -390,7 +392,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // init lookup LRU caches for oft-repeated calculations
         recentHWL = Collections.synchronizedMap(new LruCache<String, int[]>(RECENT_HWL_SIZE));
-        recentTiles = Collections.synchronizedMap(new LruCache<String, Pair<Integer, String>>(RECENT_TILES_SIZE));
+        recentTiles = Collections.synchronizedMap(new LruCache<String, Map.Entry<Integer, String>>(RECENT_TILES_SIZE));
     }
 
     /* this is incorrect for 2 reasons:
