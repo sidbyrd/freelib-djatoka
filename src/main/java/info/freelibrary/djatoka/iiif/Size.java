@@ -226,7 +226,7 @@ public class Size {
         } else if (isPercent()) {
             builder.append(Float.toString((float) myPercent / 100));
         } else {
-            builder.append(myWidth).append(',').append(myHeight);
+            builder.append(myHeight).append(',').append(myWidth);
         }
 
         return builder.toString();
