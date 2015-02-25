@@ -53,6 +53,9 @@ public class Size {
             if (aSize.startsWith(",")) {
                 try {
                     myHeight = Integer.parseInt(aSize.substring(1));
+                    if (myHeight < 0) {
+                        throw new IIIFException("Height may not be negative: " + myHeight);
+                    }
                     myAspectRatioIsPreserved = true;
                 } catch (final NumberFormatException details) {
                     throw new IIIFException("Size's scaled height is not an integer: " + aSize.substring(1));
@@ -62,6 +65,9 @@ public class Size {
 
                 try {
                     myWidth = Integer.parseInt(aSize.substring(0, end));
+                    if (myWidth < 0) {
+                        throw new IIIFException("Width may not be negative: " + myWidth);
+                    }
                     myAspectRatioIsPreserved = true;
                 } catch (final NumberFormatException details) {
                     throw new IIIFException("Size's scaled width is not an integer: " + aSize.substring(0, end));
@@ -83,12 +89,18 @@ public class Size {
 
                 try {
                     myWidth = Integer.parseInt(parts[0]);
+                    if (myWidth < 0) {
+                        throw new IIIFException("Width may not be negative: " + myWidth);
+                    }
                 } catch (final NumberFormatException details) {
                     throw new IIIFException("Size's width isn't an integer");
                 }
 
                 try {
                     myHeight = Integer.parseInt(parts[1]);
+                    if (myHeight < 0) {
+                        throw new IIIFException("Height may not be negative: " + myHeight);
+                    }
                 } catch (final NumberFormatException details) {
                     throw new IIIFException("Size's height isn't a integer");
                 }

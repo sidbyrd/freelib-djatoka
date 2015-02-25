@@ -193,4 +193,21 @@ public class Region {
 
         return builder.toString();
     }
+
+    public String toIiifString() {
+        StringBuilder builder = new StringBuilder();
+
+        if (isFullSize()) {
+            builder.append("");
+        } else {
+            builder.append(myY).append(',').append(myX).append(',');
+            if (usesPercents()) {
+                builder.append(Math.ceil(myY*myHeight/100)).append(',').append(Math.ceil(myX*myWidth/100));
+            } else {
+                builder.append(myHeight).append(',').append(myWidth);
+            }
+        }
+
+        return builder.toString();
+    }
 }
