@@ -230,9 +230,9 @@ public class Region {
 
         // TODO: cannot be percent; would need image dims.
         if (scale.isFullSize()) {
-            builder.append(myWidth).append(',').append(myHeight);
+            builder.append(myHeight).append(',').append(myWidth);
         } else {
-            builder.append(scale.getWidth()).append(',').append(scale.getHeight());
+            builder.append(scale.getHeight()).append(',').append(scale.getWidth());
         }
 
         return builder.toString();
