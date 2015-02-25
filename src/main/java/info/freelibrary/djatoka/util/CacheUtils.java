@@ -1,11 +1,11 @@
 
 package info.freelibrary.djatoka.util;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class CacheUtils {
 
@@ -24,27 +24,30 @@ public class CacheUtils {
             final float aRotation) {
         final StringBuilder cfName = new StringBuilder("image_");
         final String region = isEmpty(aRegion) ? "full" : aRegion.replace(',', '-');
+        final String scale = isEmpty(aScale) ? "full" : aScale.replace(',', '-');
 
-        /*
-         * TODO: Right now this assumes if it gets passed a level that it's not doing a region... what possibilities do
-         * we exclude by doing this?
-         */
-        if (aLevel != null && !aLevel.equals("") && !aLevel.equals("-1")) {
+        final boolean useOldNames = false;
+        if (useOldNames && !isEmpty(aLevel) && !aLevel.equals("-1") && region.equals("full")) {
+            // backwards compatibility name with level but no region or scale
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Checking cache for level-oriented tile");
             }
 
             cfName.append(aLevel);
-        } else {
+        } else if (useOldNames && isEmpty(aLevel)){
+            // backwards compatibility name with region and scale but no level
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Checking cache for scale-oriented tile");
             }
 
-            final String scale = aScale.equals("") ? "full" : aScale.replace(",", "-");
             cfName.append(scale).append('_').append(region);
+        } else {
+            // not using old names, or need a name with all three components anyways
+            // level_region_scale_rotation--same order as everything else around here.
+            cfName.append(aLevel).append('_').append(region).append('_').append(scale);
         }
 
-        if (aRotation != 0.0f) {
+        if (!useOldNames || aRotation != 0.0f) {
             cfName.append('_').append((int) aRotation); // djatoka expects int
         }
 
