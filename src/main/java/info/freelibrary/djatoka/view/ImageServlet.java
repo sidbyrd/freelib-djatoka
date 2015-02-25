@@ -505,7 +505,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // Cast floats as integers because that's what djatoka expects
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
-        if (aScale == null) {
+        if (aLevel != null && aLevel != "") {
             values = new String[] { safeID, DEFAULT_VIEW_FORMAT, aLevel, Integer.toString((int) aRotation), aRegion };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
