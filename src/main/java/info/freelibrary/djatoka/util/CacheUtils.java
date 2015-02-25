@@ -54,7 +54,7 @@ public class CacheUtils {
 
     public static String getFileName(final int aLevel, final Region aRegion, final Size aScale,
             final float aRotation) {
-        return getFileName(String.valueOf(aLevel), aRegion.toDjatokaString(), aScale.toDjatokaString(), aRotation);
+        return getFileName(String.valueOf(aLevel), aRegion.toDjatokaString(aLevel, aScale), aScale.toDjatokaString(), aRotation);
     }
 
 
