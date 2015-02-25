@@ -194,6 +194,10 @@ public class Region {
         return builder.toString();
     }
 
+    /**
+     * The way Djatoka wants it *only* if there's a region and scale, but no level
+     * @return string to go in a svc.region= part of an OpenURL with a separate svc.scale and no svc.level
+     */
     public String toDjatokaString() {
         StringBuilder builder = new StringBuilder();
 
@@ -210,4 +214,22 @@ public class Region {
 
         return builder.toString();
     }
+
+    /**
+     * The way Djatoka wants it *only* if there's a level and region
+     * @return string to go in a svc.region= part of an OpenURL with a svc.level also
+     */
+    public String toDjatokaStringWithScale(Size scale) {
+        StringBuilder builder = new StringBuilder();
+
+        if (isFullSize()) {
+            builder.append("0,0,");
+        } else {
+            builder.append(myY).append(',').append(myX).append(',');
+        }
+        builder.append(scale.getWidth()).append(',').append(scale.getHeight());
+
+        return builder.toString();
+    }
+
 }

@@ -528,7 +528,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Construct URLs without contextPath because we'll be dispatching them *within* this webapp.
         if (aLevel > 0) {
             values = new String[] { safeID, DEFAULT_VIEW_FORMAT, String.valueOf(aLevel), Integer.toString((int) aRotation),
-                    aRegion.toDjatokaString() };
+                    aRegion.toDjatokaStringWithScale(aScale) };
             url = resolverPath +StringUtils.format(RESOLVE_IMAGE_QUERY, values);
         } else {
             if (LOGGER.isDebugEnabled()) {
