@@ -209,7 +209,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                             +"Square tile size would be "+TILE_SIZE+", available height scales to "+Float.toString(TILE_SIZE*(hwl[0]-y)/rs));
                 } else if (sw != -1 && sw != Math.min(TILE_SIZE*(hwl[1]-x)/rs,TILE_SIZE)) {
                     LOGGER.debug("Scale width not right: sw="+sw+", available width scales to="+Float.toString(TILE_SIZE*(hwl[1]-x)/rs));
-                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sh+" doesn't jibe. "
+                    aResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Scale width "+sw+" doesn't jibe. "
                             +"Square tile size would be "+TILE_SIZE+", available width scales to "+Float.toString(TILE_SIZE*(hwl[1]-x)/rs));
                 } else {
 
