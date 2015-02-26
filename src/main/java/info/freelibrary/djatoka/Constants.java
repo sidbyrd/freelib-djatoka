@@ -27,7 +27,7 @@ public interface Constants {
 
     public static final String REQUIRE_LEVELS = "iiif.require.levels";
 
-    public static final String ALLOW_LOW_LEVELS = "iiif.require.levels.allowlow";
+    public static final String REQUIRE_LEVELS_MIN = "iiif.require.levels.min";
 
     /**
      * key for 1 or more (space separated) regular expressions that match a Referent and return a URL-path-safe encoded identifier

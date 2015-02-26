@@ -82,10 +82,9 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     /**
      * JP2 images has a certain number of zoom settings encoded in them. If requireLevels==true, set
-     * this to allow requests for images zoomed farther out than level 1 (using region+scale requests,
-     * but still maintaining strict power-of-two and alignment rules as if levels below 1 were legal).
+     * this to allow requests for images zoomed farther out than level 1, which is the normal minimum.
      */
-    private static boolean allowLowLevels = true;
+    private static int minZoomLevel = 1;
 
     /** path this whole webapp is at, relative to server root */
     private static String contextPath = null;
@@ -252,9 +251,15 @@ public class ImageServlet extends HttpServlet implements Constants {
                     }
 
                     // Sometimes even level 1 isn't zoomed out enough for OSD. It sometimes sends requests corresponding to
-                    // correct power-of-two region and scale for levels that would be <= 0. For example, thumbnail in navigator window.
-                    if (level < 1 && allowLowLevels) {
-                        level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
+                    // correct power-of-two region and scale for levels that would be <= 0. For example, navigator window thumbnail.
+                    if (level < 1) {
+                        if (level >= minZoomLevel) {
+                            level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
+                        } else {
+                            serveAndCache(HttpServletResponse.SC_BAD_REQUEST,
+                                    "region and scale correspond to zoom level "+level+" below allowed min of "+minZoomLevel, aRequest, aResponse);
+                            return;
+                        }
                     }
 
                     // calculate what both scale dimensions should be, even if they are given as -1 for default.
@@ -265,10 +270,10 @@ public class ImageServlet extends HttpServlet implements Constants {
                     // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
                     if (level > hwl[2]) {
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
-                                "scale level "+level+" requested that is deeper than this image's max of "+hwl[2]);
+                                "region and scale correspond to zoom level "+level+" above this image's max of "+hwl[2]);
                     } else if (x % rs != 0 || y % rs != 0) {
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
-                                "region x and y coords "+x+","+y+" must fall evenly on boundary of "+rs+" when level is"+level);
+                                "region x and y coords "+x+","+y+" must fall evenly on boundary of "+rs+" when zoom level is"+level);
                     } else if (rh != Math.min(hwl[0]-y, rs)) {
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "region height "+rh+" should be "+Math.min(hwl[0]-y, rs)+" when region size is "+rs
@@ -277,7 +282,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "region width "+rw+" should be "+Math.min(hwl[1]-x, rs)+" when region size is "+rs
                                  +" and right edge is "+Integer.toString(hwl[1]-x)+" away");
-                    } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely—only at level < 1—OSD rounds up when should dn.
+                    } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely--only at level < 1—-OSD rounds up when should dn.
                         final float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
@@ -407,8 +412,16 @@ public class ImageServlet extends HttpServlet implements Constants {
             if (props.containsKey(REQUIRE_LEVELS)) {
                 requireLevels = props.getProperty(REQUIRE_LEVELS).equals("true");
             }
-            if (props.containsKey(ALLOW_LOW_LEVELS)) {
-                allowLowLevels = props.getProperty(ALLOW_LOW_LEVELS).equals("true");
+            if (props.containsKey(REQUIRE_LEVELS_MIN)) {
+                try {
+                    minZoomLevel = Integer.parseInt(props.getProperty(REQUIRE_LEVELS_MIN));
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("Property "+REQUIRE_LEVELS_MIN+" was not a number; using "+ minZoomLevel +" instead");
+                }
+                if (minZoomLevel > 1) {
+                    LOGGER.warn("Property "+REQUIRE_LEVELS_MIN+"="+minZoomLevel+" was clipped to a max of 1");
+                    minZoomLevel = 1;
+                }
             }
         }
 
