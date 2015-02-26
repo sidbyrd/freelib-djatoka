@@ -277,16 +277,16 @@ public class ImageServlet extends HttpServlet implements Constants {
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "region width "+rw+" should be "+Math.min(hwl[1]-x, rs)+" when region size is "+rs
                                  +" and right edge is "+Integer.toString(hwl[1]-x)+" away");
-                    } else if (sh != -1 && sh != explicitSh) {
+                    } else if (sh != -1 && Math.abs(explicitSh - sh) <= 1) { // rarely—only at level < 1—OSD rounds up when should dn.
                         final float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
-                                +" (~"+Math.round(raw)+" away after scaling");
-                    } else if (sw != -1 && sw != explicitSw) {
+                                +" (~"+Math.round(raw)+" away after scaling)");
+                    } else if (sw != -1 && Math.abs(explicitSw - sw) <= 1) {
                         final float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
                         response = new AbstractMap.SimpleImmutableEntry<Integer,String>(HttpServletResponse.SC_BAD_REQUEST,
                                 "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
-                                +" (~"+Math.round(raw)+" away after scaling");
+                                +" (~"+Math.round(raw)+" away after scaling)");
                     }
                     if (response != null) {
                         if (LOGGER.isDebugEnabled()) {
@@ -296,7 +296,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                         return;
                     }
 
-                    // make scale dimensions explicit -- it's required when using level (and doesn't hurt when not)
+                    // make scale dimensions explicit -- it's required when using level (and overwrites minor OSD rounding flaws)
                     scale.setExplicit(explicitSw, explicitSh);
                 }
                 // All good! Serve the image tile, ideally from cache
