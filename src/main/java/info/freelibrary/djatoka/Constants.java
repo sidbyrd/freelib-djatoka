@@ -23,6 +23,12 @@ public interface Constants {
 
     public static final String INTERNAL_SERVER = "djatoka.server.internal";
 
+    public static final String REQUIRE_OSD_STYLE = "iiif.require.osdstyle";
+
+    public static final String REQUIRE_LEVELS = "iiif.require.levels";
+
+    public static final String ALLOW_LOW_LEVELS = "iiif.require.levels.allowlow";
+
     /**
      * key for 1 or more (space separated) regular expressions that match a Referent and return a URL-path-safe encoded identifier
      */
