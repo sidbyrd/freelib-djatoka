@@ -98,7 +98,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     /**
      * recently accessed tile filenames, keyed by URL
-     * value is HTTP status code, filename (or error message if code != SC_OK)
+     * value is pair of HTTP status code and filename (or error message if code != SC_OK)
      */
     private static Map<String, Map.Entry<Integer, String>> recentTiles = null;
     private static final int RECENT_TILES_SIZE = 50000;
@@ -163,6 +163,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 final int sh = scale.getHeight(); // with OpenSeaDragon, is always -1. Already guaranteed both are not -1.
                 final int sw = scale.getWidth();
                 Region region = imageRequest.getRegion();
+                region.setFullsizeDims(hwl[1], hwl[0]);
                 int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
                 int y = region.getY();
                 int rh = region.getHeight();
@@ -173,12 +174,6 @@ public class ImageServlet extends HttpServlet implements Constants {
                 if (x > hwl[1] || y > hwl[0]) {
                     serveAndCache(HttpServletResponse.SC_BAD_REQUEST, "region x/y coords not within image bounds", aRequest, aResponse);
                     return;
-                }
-                // canonicalize region: if it is not "full" but could be, make it so
-                if (x==0 && y==0 && rw==hwl[1] && rh==hwl[0]) {
-                    try {
-                        region = new Region("full");
-                    } catch (IIIFException e) { /**/ }
                 }
 
                 // if configured, don't allow requests that aren't expected when using OpenSeaDragon
@@ -209,14 +204,6 @@ public class ImageServlet extends HttpServlet implements Constants {
                     if (sw > TILE_SIZE || sh > TILE_SIZE) {
                         serveAndCache(HttpServletResponse.SC_BAD_REQUEST, "max tile size is " + TILE_SIZE, aRequest, aResponse);
                         return;
-                    }
-
-                    // Even if region is "full", I still need these values for error checking and level calculation
-                    if (region.isFullSize()) {
-                        x = 0;
-                        y = 0;
-                        rw = hwl[1]; // image width
-                        rh = hwl[0]; // image height
                     }
 
                     // Find the side length of the region in the image being requested.
@@ -250,8 +237,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                         LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
                     }
 
-                    // Sometimes even level 1 isn't zoomed out enough for OSD. It sometimes sends requests corresponding to
-                    // correct power-of-two region and scale for levels that would be <= 0. For example, navigator window thumbnail.
+                    // Zoom levels < 1 are not legal in Djatoka, but they may still be requested for thumbnails or tiny screens.
                     if (level < 1) {
                         if (level >= minZoomLevel) {
                             level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.

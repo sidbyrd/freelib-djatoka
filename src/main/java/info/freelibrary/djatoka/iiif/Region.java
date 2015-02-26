@@ -102,6 +102,26 @@ public class Region {
     }
 
     /**
+     * Informs this Region of the full dimensions of the image it is for.
+     * This allows it to make itself "full" if it exactly covers that image, for
+     * normalization and purposes.
+     * It also allows it to know its width and height if it was already "full".
+     * If this Region isn't full sized, nothing changes.
+     * @param imageWidth width of image this Region is for
+     * @param imageHeight height of image this Region is for
+     */
+    public void setFullsizeDims(int imageWidth, int imageHeight) {
+        if (myX==0 && myY==0 && myWidth==imageWidth && myHeight==imageHeight) {
+            myRegionIsFullSize = true;
+        } else if (myRegionIsFullSize) {
+            myX=0;
+            myY=0;
+            myWidth = imageWidth;
+            myHeight = imageHeight;
+        }
+    }
+
+    /**
      * Returns true if region is full size; else, false
      * 
      * @return True if region is full size; else, false
@@ -210,6 +230,8 @@ public class Region {
             builder.append("");
             return builder.toString();
         }
+        // if fullSize() && level==1, will need w&h to have been set---call setFullsizeDims first.
+        // if fullSize() && level >1, there has been some sort of error. That shouldn't happen.
 
         // coords
         if (isFullSize()) {
