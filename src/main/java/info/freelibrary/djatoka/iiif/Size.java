@@ -110,12 +110,47 @@ public class Size {
         }
     }
 
-    public void setExplicit(int width, int height) {
-        myAspectRatioIsPreserved = false;
-        myHeight = height;
-        mySizeIsFull = false;
+    /**
+     * Informs the Size of the dimensions of the Region is is for, and computes
+     * explicit size and width if it didn't already have it.
+     * If it used percents, they are converted to direct dimensions.
+     * If either dimension was unspecified (-1) before, it remains unchanged.
+     * @param regionWidth width of the Region this Size is for
+     * @param regionHeight height of the Region this Size is for
+     */
+    public void normalizeForRegionDims(int regionWidth, int regionHeight) {
+        if (mySizeIsFull) {
+            mySizeIsFull = false; // means don't toString() as "full", not whether it has full coverage.
+            if (hasWidth()) {
+                myWidth = regionWidth;
+            }
+            if (hasHeight()) {
+                myHeight = regionHeight;
+            }
+        } else if (mySizeIsPercent) {
+            if (hasWidth()) {
+                myWidth = (int)(regionWidth * myWidth*0.01);
+            }
+            if (hasHeight()) {
+                myHeight = (int)(regionHeight * myHeight*0.01);
+            }
+        }
         mySizeIsPercent = false;
+    }
+
+    /**
+     * Explicitly sets both width and height with direct (non-percent) values.
+     * This means that isAspectRatioPreserved() becomes false.
+     * Note: Explicit values for both width and height are required with Djatoka level-based requests.
+     * @param width new width for this Size
+     * @param height new height for this Size
+     */
+    public void setExplicit(int width, int height) {
         myWidth = width;
+        myHeight = height;
+        myAspectRatioIsPreserved = false; // semantically false, but this actually just means "is w or h -1 ?"
+        mySizeIsFull = false; // means don't toString() as "full", not whether it has full coverage.
+        mySizeIsPercent = false;
     }
 
     /**
@@ -230,11 +265,11 @@ public class Size {
         final StringBuilder builder = new StringBuilder();
 
         if (isFullSize()) {
-            builder.append("1.0");
+            builder.append("1.0"); // single scaling factor instead of w & h
         } else if (isPercent()) {
-            builder.append(Float.toString((float) myPercent / 100));
+            builder.append(Float.toString((float) myPercent / 100)); // single scaling factor instead of w & h
         } else {
-            builder.append(myWidth).append(',').append(myHeight);
+            builder.append(myWidth).append(',').append(myHeight); // if either is "-1", send it unaltered.
         }
 
         return builder.toString();

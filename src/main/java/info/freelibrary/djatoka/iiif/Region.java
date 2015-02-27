@@ -102,22 +102,29 @@ public class Region {
     }
 
     /**
-     * Informs this Region of the full dimensions of the image it is for.
-     * This allows it to make itself "full" if it exactly covers that image, for
-     * normalization and purposes.
-     * It also allows it to know its width and height if it was already "full".
-     * If this Region isn't full sized, nothing changes.
+     * Informs this Region of the full dimensions of the image it is for, and
+     * computes explicit size and width if it didn't already have it.
+     * If it is full coverage, turns itself into a "full" region.
+     * If it used percents, they are converted to direct dimensions.
      * @param imageWidth width of image this Region is for
      * @param imageHeight height of image this Region is for
      */
-    public void setFullsizeDims(int imageWidth, int imageHeight) {
-        if (myX==0 && myY==0 && myWidth==imageWidth && myHeight==imageHeight) {
-            myRegionIsFullSize = true;
-        } else if (myRegionIsFullSize) {
+    public void normalizeForImageDims(int imageWidth, int imageHeight) {
+        if (myRegionIsFullSize) {
             myX=0;
             myY=0;
             myWidth = imageWidth;
             myHeight = imageHeight;
+        } else if (myRegionUsesPercents) {
+            myX = (int)(imageWidth * (myX*0.01));
+            myY = (int)(imageHeight * (myY*0.01));
+            myWidth = (int)(imageWidth * (myWidth*0.01));
+            myHeight = (int)(imageHeight * (myHeight*0.01));
+        }
+        myRegionUsesPercents = false;
+
+        if (myX==0 && myY==0 && myWidth==imageWidth && myHeight==imageHeight) {
+            myRegionIsFullSize = true;
         }
     }
 
@@ -216,39 +223,42 @@ public class Region {
 
     /**
      * The way Djatoka wants it.
-     * Uses region coords and scale if it will go with a level.
      * Uses region coords and region dims it it will go with a scale
+     * Uses region coords and scale dims if it will go with a level.
      * @param level the level this region goes with (or < 1 for no level)
-     * @param scale the scale this region will go with
+     * @param scale the scale this region will go with.
+     *          May be null if level < 1 or scale is 100% anyways.
      * @return string to go in a svc.region= part of an OpenURL
      */
     public String toDjatokaString(int level, Size scale) {
         StringBuilder builder = new StringBuilder();
 
-        if (isFullSize() && level < 1) {
-            // region+scale, but region is a no-op. done.
+        if (myRegionIsFullSize && level < 1) {
+            // using region-based request, but region is "full". Done.
             builder.append("");
             return builder.toString();
         }
-        // if fullSize() && level==1, will need w&h to have been set---call setFullsizeDims first.
-        // if fullSize() && level >1, there has been some sort of error. That shouldn't happen.
 
         // coords
-        if (isFullSize()) {
+        if (myRegionIsFullSize) {
             // level and regionScale requires coords
             builder.append("0,0,");
         } else {
             builder.append(myY).append(',').append(myX).append(',');
         }
 
-        if (usesPercents()) {
-            builder.append("pct:"); // will fail if level>0, but would need image dims to fix it, and never happens.
+        // dimensions
+        if (myRegionUsesPercents) {
+            builder.append("pct:"); // will not work correctly if level>0 and haven't called normalizeForImageDims()
         }
-        if (scale.isFullSize() || level < 1) {
-            // no level, or no scale: use region width
+        if (scale==null || scale.isFullSize() || myRegionIsFullSize || level < 1) {
+            // if no scale info provided: scale is efffectively 100%, so use region dims; it's the same.
+            // if using region-based request: send region dims
+            // if level >=1 and fullSize, I think level must be exactly 1 (unless somehow an error was made),
+            //   so scale dims == full size == region dims
             builder.append(myHeight).append(',').append(myWidth);
         } else {
-            // using level: use scale
+            // using level-based request: send scale; that's just how Djatoka does it.
             builder.append(scale.getHeight()).append(',').append(scale.getWidth());
         }
 
