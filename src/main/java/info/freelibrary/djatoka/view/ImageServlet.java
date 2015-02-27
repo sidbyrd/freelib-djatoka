@@ -454,6 +454,12 @@ public class ImageServlet extends HttpServlet implements Constants {
         // this requires that the scaled output tile size be standard.
         if (sw > TILE_SIZE || sh > TILE_SIZE) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "max tile size is " + TILE_SIZE);
+        } else if (rw < hwl[1]-x && !isExactPowerOf2(rw)) {
+            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+                    "region width "+rw+" not a power of two and not limited by image edge");
+        } else if (rh < hwl[0]-y && !isExactPowerOf2(rh)) {
+            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+                    "region height "+rh+" not a power of two and not limited by image edge");
         }
 
         // Find the side length of the region in the image being requested.
