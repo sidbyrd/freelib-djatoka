@@ -451,7 +451,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         final int rw = region.getWidth();
         int level;
 
-        // this requires that the scaled output tile size be standard.
+        // pre-validations that apply when using levels
         if (sw > TILE_SIZE || sh > TILE_SIZE) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "max tile size is " + TILE_SIZE);
         } else if (rw < hwl[1]-x && !isExactPowerOf2(rw)) {
