@@ -12,7 +12,7 @@
   <entry key="djatoka.server.internal">http://127.0.0.1:8080</entry>
   <entry key="iiif.require.osdstyle">true</entry>
   <entry key="iiif.require.levels">true</entry>
-  <entry key="diiif.require.levels.min">-4</entry>
+  <entry key="iiif.require.levels.min">-4</entry>
   <entry key="djatoka.ingest.id.validations">^(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)$
 		    ^http[s]?://(?:scholarship|dspace|dspacedev|dspacetest).rice.edu/bitstream/handle/(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)*$</entry>
   <entry key="djatoka.ingest.id.hosts">http://127.0.0.1:8080/bitstream/handle/{}</entry>
