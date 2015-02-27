@@ -382,7 +382,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         scale.normalizeForRegionDims(region.getWidth(), region.getHeight());
 
         if (requireLevels) {
-            level = findLevel(hwl, region, scale);
+            level = findLevelFromRegion(hwl, region, scale);
         }
         // All good! Serve the image tile, ideally from cache
         String cachedFilename = serveImageWithCaching(id, level, region, scale, rotation, aRequest, aResponse);
@@ -408,7 +408,7 @@ public class ImageServlet extends HttpServlet implements Constants {
     private void validateOsdStyle(Region region, Size scale, float rotation) throws HttpErrorException {
         if (scale.isFullSize() || scale.isPercent()) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "may only use direct numeric scale specification");
-        } else if ((scale.hasWidth() && scale.hasHeight()) || scale.maintainsAspectRatio()) {
+        } else if ((scale.hasWidth() && scale.hasHeight()) || !scale.maintainsAspectRatio()) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "may not specify both scaled dimensions or use '!'");
         } else if (region.usesPercents()) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "region may not use percent");
@@ -432,7 +432,8 @@ public class ImageServlet extends HttpServlet implements Constants {
      *   would be inappropriate (even though settings were otherwise valid)
      * @throws info.freelibrary.djatoka.view.ImageServlet.HttpErrorException if settings were invalid for using levels
      */
-    private int findLevel(final int[] hwl, final Region region, final Size scale) throws HttpErrorException {
+    private int findLevelFromRegion(final int[] hwl, final Region region, final Size scale)
+            throws HttpErrorException {
         final int sh = scale.getHeight(); // with OpenSeaDragon, is always -1. Already guaranteed both are not -1.
         final int sw = scale.getWidth();
         final int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
