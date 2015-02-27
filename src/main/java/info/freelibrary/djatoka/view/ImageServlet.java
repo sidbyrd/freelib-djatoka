@@ -282,11 +282,20 @@ public class ImageServlet extends HttpServlet implements Constants {
             } catch (HttpErrorException re) {
                 // send any error messages
                 serveAndCache(re.getPair(), aRequest, aResponse);
-                if (LOGGER.isDebugEnabled()) {
-                    if (re.getCause() != null) {
-                        LOGGER.debug("error "+re.getCode()+": "+re.getMessage(), re.getCause());
-                    } else {
-                        LOGGER.debug("error "+re.getCode()+": "+re.getMessage());
+                // log the error if appropriate
+                if (LOGGER.isWarnEnabled()) {
+                    final boolean isWarn = re.getCode() >= 500; // actual error, not just "not found" or something
+                    if (isWarn || LOGGER.isDebugEnabled()) {
+                        StringBuilder message = new StringBuilder().append("error ").append(re.getCode())
+                                .append(": ").append(re.getMessage());
+                        if (re.getCause() != null) {
+                            message=message.append(" from ").append(re.getCause());
+                        }
+                        if (isWarn) {
+                            LOGGER.warn(message.toString());
+                        } else {
+                            LOGGER.debug(message.toString());
+                        }
                     }
                 }
             }
