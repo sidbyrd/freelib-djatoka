@@ -251,15 +251,15 @@ public class Region {
         if (myRegionUsesPercents) {
             builder.append("pct:"); // will not work correctly if level>0 and haven't called normalizeForImageDims()
         }
-        if (scale==null || scale.isFullSize() || myRegionIsFullSize || level < 1) {
-            // if no scale info provided: scale is efffectively 100%, so use region dims; it's the same.
-            // if using region-based request: send region dims
-            // if level >=1 and fullSize, I think level must be exactly 1 (unless somehow an error was made),
-            //   so scale dims == full size == region dims
+        if (scale==null || scale.isFullSize() || level < 1) {
+            // if no scale info provided: scale is effectively 100%, so use region dims; it's the same.
+            // if using region-based request (level <1) : send region dims
             builder.append(myHeight).append(',').append(myWidth);
         } else {
             // using level-based request: send scale; that's just how Djatoka does it.
+            // scale must be explicit in both dims, so call normalizeForImageDims() first.
             builder.append(scale.getHeight()).append(',').append(scale.getWidth());
+            // useless bonus info: if level >0 and fullSize, level must be exactly 1, but still need scale dims, not region dims.
         }
 
         return builder.toString();

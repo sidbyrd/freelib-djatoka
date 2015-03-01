@@ -332,8 +332,12 @@ public class ImageServlet extends HttpServlet implements Constants {
     protected void doInfoRequest(final InfoRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws HttpErrorException {
         final String id = iiif.getIdentifier();
+
+        // fecth the metadata that is being requested
         final int[] hwl = getMetadataWithCaching(id);
         final ImageInfo info = new ImageInfo(id, hwl[0], hwl[1], hwl[2]);
+
+        // write it to output
         ServletOutputStream outStream = null;
         try {
             outStream = aResponse.getOutputStream();

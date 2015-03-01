@@ -121,11 +121,17 @@ public class Size {
     public void normalizeForRegionDims(int regionWidth, int regionHeight) {
         if (mySizeIsFull) {
             mySizeIsFull = false; // means don't toString() as "full", not whether it has full coverage.
-            if (hasWidth()) {
+            if (!hasWidth() && !hasHeight()) {
                 myWidth = regionWidth;
-            }
-            if (hasHeight()) {
                 myHeight = regionHeight;
+                myAspectRatioIsPreserved = false;
+            } else {
+                if (hasWidth()) {
+                    myWidth = regionWidth;
+                }
+                if (hasHeight()) {
+                    myHeight = regionHeight;
+                }
             }
         } else if (mySizeIsPercent) {
             if (hasWidth()) {
