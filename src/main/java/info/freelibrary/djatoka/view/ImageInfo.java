@@ -9,44 +9,40 @@ import info.freelibrary.djatoka.iiif.Constants;
 import info.freelibrary.djatoka.util.URLEncode;
 import nu.xom.Document;
 import nu.xom.Element;
-import nu.xom.Elements;
 import nu.xom.Serializer;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class ImageInfo {
 
-    private final Document myInfoDoc;
+    private final String myId;
+    private final int myHeight;
+    private final int myWidth;
+    private final int myLevels;
+    private final List<String> myFormats;
 
-    private final int myLevel;
+    private Document infoDoc = null;
+    private String json = null;
 
     /**
-     * Creates an image info object. This was written back when XML was a allowed response... should be rewritten now
-     * that it's JSON-only.
+     * Creates an image info object which may be queried for its constructor-supplied properties, or
+     * output as XML or JSON.
      * 
      * @param aID An image ID
      * @param aHeight The height of the image represented by the supplied ID
      * @param aWidth The width of the image represented by the supplied ID
+     * @param aLevels The max Djatoka "level" the image can be requested at
      */
-    public ImageInfo(final String aID, final int aHeight, final int aWidth, final int aLevel) {
-        final Element id = new Element("identifier", Constants.IIIF_NS);
-        final Element height = new Element("height", Constants.IIIF_NS);
-        final Element width = new Element("width", Constants.IIIF_NS);
-        final Element root = new Element("info", Constants.IIIF_NS);
-
-        width.appendChild(Integer.toString(aWidth));
-        height.appendChild(Integer.toString(aHeight));
-        id.appendChild(aID);
-
-        myInfoDoc = new Document(root);
-        root.appendChild(id);
-        root.appendChild(width);
-        root.appendChild(height);
-
-        myLevel = aLevel;
+    public ImageInfo(final String aID, final int aHeight, final int aWidth, final int aLevels) {
+        myId = aID;
+        myHeight = aHeight;
+        myWidth = aWidth;
+        myLevels = aLevels;
+        myFormats = new ArrayList<String>(1); // in practice, we only use 1.
     }
 
     /**
@@ -55,7 +51,7 @@ public class ImageInfo {
      * @return The image's identifier
      */
     public String getIdentifier() {
-        return getValue("identifier");
+        return myId;
     }
 
     /**
@@ -64,7 +60,7 @@ public class ImageInfo {
      * @return The height of the image
      */
     public int getHeight() {
-        return Integer.parseInt(getValue("height"));
+        return myHeight;
     }
 
     /**
@@ -73,7 +69,16 @@ public class ImageInfo {
      * @return The width of the image
      */
     public int getWidth() {
-        return Integer.parseInt(getValue("width"));
+        return myWidth;
+    }
+
+    /**
+     * Gets the image's max levels
+     *
+     * @return the max levels
+     */
+    public int getLevels() {
+        return myLevels;
     }
 
     /**
@@ -82,20 +87,11 @@ public class ImageInfo {
      * @param aFormat A format to add to the supported list
      */
     public void addFormat(final String aFormat) {
-        final Element root = myInfoDoc.getRootElement();
-        final Elements elements = root.getChildElements("formats", Constants.IIIF_NS);
-        final Element format = new Element("format", Constants.IIIF_NS);
-        Element formats;
-
-        if (elements.size() > 0) {
-            formats = elements.get(0);
-        } else {
-            formats = new Element("formats", Constants.IIIF_NS);
-            root.appendChild(formats);
+        if (!aFormat.contains(aFormat)) {
+            myFormats.add(aFormat);
         }
-
-        format.appendChild(aFormat);
-        formats.appendChild(format);
+        infoDoc = null; // invalidate if already generated
+        json = null;
     }
 
     /**
@@ -104,7 +100,40 @@ public class ImageInfo {
      * @return The list of supported formats
      */
     public List<String> getFormats() {
-        return getValues("format");
+        return Collections.unmodifiableList(myFormats);
+    }
+
+    /**
+     * Makes an XML Document containing all the data we have for this image.
+     * If it has already been made (and nothing has changed since then), returns existing Document.
+     * @return generated Document
+     */
+    private Document infoDoc() {
+        if (infoDoc == null) {
+            final Element id = new Element("identifier", Constants.IIIF_NS);
+            final Element height = new Element("height", Constants.IIIF_NS);
+            final Element width = new Element("width", Constants.IIIF_NS);
+            final Element root = new Element("info", Constants.IIIF_NS);
+            final Element formats = new Element("myFormats", Constants.IIIF_NS);
+
+            width.appendChild(Integer.toString(myWidth));
+            height.appendChild(Integer.toString(myHeight));
+            id.appendChild(myId);
+
+            infoDoc = new Document(root);
+            root.appendChild(id);
+            root.appendChild(width);
+            root.appendChild(height);
+            root.appendChild(formats);
+
+            for (String aFormat : myFormats) {
+                final Element format = new Element("format", Constants.IIIF_NS);
+                format.appendChild(aFormat);
+                formats.appendChild(format);
+            }
+        }
+
+        return infoDoc;
     }
 
     /**
@@ -113,17 +142,17 @@ public class ImageInfo {
      * @return The XML representation of the image's metadata
      */
     public String toXML() {
-        return myInfoDoc.toXML();
+        return infoDoc().toXML();
     }
 
     /**
-     * Gets the string representation of the image's metadata.
+     * Gets the string representation of the image's metadata, which is defined to be its XML representation.
      * 
      * @return The string representation of the image's metadata
      */
     @Override
     public String toString() {
-        return myInfoDoc.toXML();
+        return infoDoc().toXML();
     }
 
     /**
@@ -132,84 +161,56 @@ public class ImageInfo {
      * @param aService The IIIF service
      * @param aPrefix The IIIF prefix
      * @return The JSON representation of the image's metadata
+     * @throws JsonProcessingException if JSON can't be formed - shouldn't happen.
      */
     public String toJSON(final String aService, final String aPrefix) throws JsonProcessingException {
-        final ObjectMapper mapper = new ObjectMapper();
-        final ObjectNode rootNode = mapper.createObjectNode();
-        final ArrayNode formats, scaleFactors;
-        final String id = URLEncode.pathSafetyEncode(getIdentifier());
+        if (json == null) {
+            final ObjectMapper mapper = new ObjectMapper();
+            final ObjectNode rootNode = mapper.createObjectNode();
+            final ArrayNode formats, scaleFactors;
+            final String id = URLEncode.pathSafetyEncode(getIdentifier());
 
-        rootNode.put("@context", "http://library.stanford.edu/iiif/image-api/1.1/context.json");
-        rootNode.put("@id", aService + "/" + aPrefix + "/" + id);
-        rootNode.put("width", getWidth());
-        rootNode.put("height", getHeight());
+            rootNode.put("@context", "http://library.stanford.edu/iiif/image-api/1.1/context.json");
+            rootNode.put("@id", aService + "/" + aPrefix + "/" + id);
+            rootNode.put("width", myWidth);
+            rootNode.put("height", myHeight);
 
-        scaleFactors = rootNode.arrayNode();
+            scaleFactors = rootNode.arrayNode();
 
-        // treat levels as exponential (output is 2^^(level-1), up to a max of 256==2^^(9-1), because let's not be crazy.
-        int start = 1;
-        for (int level = 0; level < myLevel && level <= 9; level++) {
-            scaleFactors.add(start);
-            start *=2;
+            // treat levels as exponential (output is 2^^(level-1), up to a max of 256==2^^(9-1), because let's not be crazy.
+            int start = 1;
+            for (int level = 0; level < myLevels && level <= 9; level++) {
+                scaleFactors.add(start);
+                start *=2;
+            }
+
+            rootNode.put("scale_factors", scaleFactors);
+            rootNode.put("tile_width", 256); // TODO: provide other tile size options?
+            rootNode.put("tile_height", 256);
+
+            formats = rootNode.arrayNode();
+
+            for (final String format : myFormats) {
+                formats.add(format);
+            }
+
+            rootNode.put("myFormats", formats);
+            rootNode.put("qualities", rootNode.arrayNode().add("native"));
+            rootNode.put("profile", Constants.IIIF_URL + "1.1/compliance.html#level1");
+
+            json = mapper.writeValueAsString(rootNode);
         }
 
-        rootNode.put("scale_factors", scaleFactors);
-        rootNode.put("tile_width", 256); // TODO: provide other tile size options?
-        rootNode.put("tile_height", 256);
-
-        formats = rootNode.arrayNode();
-
-        for (final String format : getFormats()) {
-            formats.add(format);
-        }
-
-        rootNode.put("formats", formats);
-        rootNode.put("qualities", rootNode.arrayNode().add("native"));
-        rootNode.put("profile", Constants.IIIF_URL + "1.1/compliance.html#level1");
-
-        return mapper.writeValueAsString(rootNode);
+        return json;
     }
 
     /**
-     * Serializes the image info the supplied output stream.
+     * Serializes the image info the supplied output stream as XML.
      * 
      * @param aOutputStream The output stream to which the image info should be serialized
      * @throws IOException If there is a problem reading or writing the image info
      */
-    public void toStream(final OutputStream aOutputStream) throws IOException {
-        new Serializer(aOutputStream).write(myInfoDoc);
+    public void toStreamXML(final OutputStream aOutputStream) throws IOException {
+        new Serializer(aOutputStream).write(infoDoc());
     }
-
-    private List<String> getValues(final String aName) {
-        final ArrayList<String> list = new ArrayList<String>();
-        final Element root = myInfoDoc.getRootElement();
-        final Elements elements = root.getChildElements();
-
-        for (int eIndex = 0; eIndex < elements.size(); eIndex++) {
-            final Element element = elements.get(eIndex);
-            final Elements children = element.getChildElements(aName, Constants.IIIF_NS);
-
-            if (children.size() > 0) {
-                for (int cIndex = 0; cIndex < children.size(); cIndex++) {
-                    list.add(children.get(cIndex).getValue());
-                }
-
-                break;
-            }
-        }
-
-        return list;
-    }
-
-    private String getValue(final String aName) {
-        final Element root = myInfoDoc.getRootElement();
-        final Elements elements = root.getChildElements(aName, Constants.IIIF_NS);
-
-        if (elements.size() > 0) {
-            return elements.get(0).getValue();
-        }
-
-        return null;
-    }
-
 }

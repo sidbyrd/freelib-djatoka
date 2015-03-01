@@ -100,7 +100,7 @@ public class ImageServlet extends HttpServlet implements Constants {
     private String resolverPath = null;
 
     /** recently accessed Height, Width, and Level lookups, keyed by identifier */
-    private Map<String, int[]> recentHWL = null;
+    private Map<String, ImageInfo> recentImageInfo = null;
     private static final int RECENT_HWL_SIZE = 500;
 
     /**
@@ -195,7 +195,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         LOGGER.debug("IIIF servlet using resolver URL of {}", resolverPath);
 
         // init lookup LRU caches for oft-repeated calculations
-        recentHWL = Collections.synchronizedMap(new LruCache<String, int[]>(RECENT_HWL_SIZE));
+        recentImageInfo = Collections.synchronizedMap(new LruCache<String, ImageInfo>(RECENT_HWL_SIZE));
         recentTiles = Collections.synchronizedMap(new LruCache<String, Map.Entry<Integer, String>>(RECENT_TILES_SIZE));
     }
 
@@ -331,11 +331,8 @@ public class ImageServlet extends HttpServlet implements Constants {
      */
     protected void doInfoRequest(final InfoRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws HttpErrorException {
-        final String id = iiif.getIdentifier();
-
-        // fecth the metadata that is being requested
-        final int[] hwl = getMetadataWithCaching(id);
-        final ImageInfo info = new ImageInfo(id, hwl[0], hwl[1], hwl[2]);
+        // fetch the metadata that is being requested
+        final ImageInfo imageInfo = getImageInfoWithCaching(iiif.getIdentifier());
 
         // write it to output
         ServletOutputStream outStream = null;
@@ -343,16 +340,16 @@ public class ImageServlet extends HttpServlet implements Constants {
             outStream = aResponse.getOutputStream();
 
             if (iiif.getExtension().equals("xml")) {
-                info.toStream(outStream);
+                imageInfo.toStreamXML(outStream);
             } else {
                 final String server = getServer(aRequest); // needs to be the externally-accessible address
 
                 // per IIIF spec, the prefix includes the contextPath already.
                 final String prefix = iiif.getServicePrefix();
 
-                info.addFormat("jpg"); // FIXME: Configurable options
+                imageInfo.addFormat("jpg"); // FIXME: Configurable options
 
-                outStream.print(info.toJSON(server, prefix));
+                outStream.print(imageInfo.toJSON(server, prefix));
             }
         } catch (final JsonProcessingException e) {
             throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "couldn't make JSON", e);
@@ -366,10 +363,12 @@ public class ImageServlet extends HttpServlet implements Constants {
     protected void doImageRequest(final ImageRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws HttpErrorException {
         final String id = iiif.getIdentifier();
-        final int[] hwl = getMetadataWithCaching(id); // of source image; already cached if user requested metadata
+        final ImageInfo imageInfo = getImageInfoWithCaching(id); // of source image; already cached if user requested metadata
         final Region region = iiif.getRegion(); // refers to a region within source image, at native resolution
         final Size scale = iiif.getSize(); // refers to the size of tile requested, generated from Region, usually smaller.
         final float rotation = iiif.getRotation();
+        final int imageHeight = imageInfo.getHeight();
+        final int imageWidth = imageInfo.getWidth();
         int level = -1; // no level yet
 
         if (LOGGER.isDebugEnabled()) {
@@ -377,8 +376,8 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
 
         // validate some obvious basics
-        if (region.getX() > hwl[1] || region.getY() > hwl[0]) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "region x/y coords exceed image size of "+hwl[1]+","+hwl[0]);
+        if (region.getX() > imageWidth || region.getY() > imageHeight) {
+            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "region x/y coords exceed image size of "+imageWidth+","+imageHeight);
         }
         if (scale.getHeight() > TILE_SIZE || scale.getWidth() > TILE_SIZE) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "scaled dimension exceeds max of "+TILE_SIZE);
@@ -391,11 +390,11 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // get rid of stuff like percentages and scale==full, and force use of region==full if applicable.
         // Nice anyways, but mandatory before using levels.
-        region.normalizeForImageDims(hwl[1], hwl[0]);
+        region.normalizeForImageDims(imageWidth, imageHeight);
         scale.normalizeForRegionDims(region.getWidth(), region.getHeight());
 
         if (requireLevels) {
-            level = findLevelFromRegion(hwl, region, scale);
+            level = findLevelFromRegion(imageInfo, region, scale);
         }
         // All good! Serve the image tile, ideally from cache
         String cachedFilename = serveImageWithCaching(id, level, region, scale, rotation, aRequest, aResponse);
@@ -438,15 +437,18 @@ public class ImageServlet extends HttpServlet implements Constants {
      *
      * We bothered to encode our JP2s with these nifty levels. And the decode faster and at higher
      * quality. Let's use them!
-     * @param hwl the height, width, and max level of the source image
+     * @param imageInfo the ImageInfo with details about the image in question
      * @param region the region of interest within the source image
      * @param scale the scale to generate the output tile at
      * @return the svc.level to request from Djatoka, or -1 to indicate that a level-based request
      *   would be inappropriate (even though settings were otherwise valid)
      * @throws info.freelibrary.djatoka.view.ImageServlet.HttpErrorException if settings were invalid for using levels
      */
-    private int findLevelFromRegion(final int[] hwl, final Region region, final Size scale)
+    private int findLevelFromRegion(final ImageInfo imageInfo, final Region region, final Size scale)
             throws HttpErrorException {
+        final int ih = imageInfo.getHeight();
+        final int iw = imageInfo.getWidth();
+        final int maxLevels = imageInfo.getLevels();
         final int sh = scale.getHeight(); // with OpenSeaDragon, is always -1. Already guaranteed both are not -1.
         final int sw = scale.getWidth();
         final int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
@@ -458,10 +460,10 @@ public class ImageServlet extends HttpServlet implements Constants {
         // pre-validations that apply when using levels
         if (sw > TILE_SIZE || sh > TILE_SIZE) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "max tile size is " + TILE_SIZE);
-        } else if (rw < hwl[1]-x && !isExactPowerOf2(rw)) {
+        } else if (rw < iw-x && !isExactPowerOf2(rw)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "region width "+rw+" not a power of two and not limited by image edge");
-        } else if (rh < hwl[0]-y && !isExactPowerOf2(rh)) {
+        } else if (rh < ih-y && !isExactPowerOf2(rh)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "region height "+rh+" not a power of two and not limited by image edge");
         }
@@ -470,18 +472,18 @@ public class ImageServlet extends HttpServlet implements Constants {
         int rs; // region square side length (if edges of image didn't interfere)
         int l; // sqrt(rs), which works like a psuedo-level. We convert to a real Djatoka "level" at the end.
 
-        if (rw < hwl[1]-x) { // if region width isn't against the edge, it is the full square width
+        if (rw < iw-x) { // if region width isn't against the edge, it is the full square width
             rs=rw;
             l = log2(rs);
-        } else if (rh < hwl[0]-y) {  // if region height isn't against the edge, it is the full square height
+        } else if (rh < ih-y) {  // if region height isn't against the edge, it is the full square height
             rs=rh;
             l = log2(rs);
         } else if (sw > 0 && sw < TILE_SIZE) { // if scale width is less than TILE_SIZE, can extract rs from its value
-            rs = TILE_SIZE*(hwl[1]-x)/sw; // sw = ceil[ TILE_SIZE * (width-x) / rs ]  => rs = floor[ TILE_SIZE * (width-x) / sw ]
+            rs = TILE_SIZE*(iw-x)/sw; // sw = ceil[ TILE_SIZE * (iw-x) / rs ]  => rs = floor[ TILE_SIZE * (iw-x) / sw ]
             l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
             rs = 1<<l; // rs = 2^l
         } else if (sh > 0 && sh < TILE_SIZE) { // if scale height is less than TILE_SIZE, can extract rs from its value
-            rs = TILE_SIZE*(hwl[0]-y)/sh; // sh = ceil[ TILE_SIZE * (height-y) / rs ]  => rs = floor[ TILE_SIZE * (height-y) / sh ]
+            rs = TILE_SIZE*(ih-y)/sh; // sh = ceil[ TILE_SIZE * (ih-y) / rs ]  => rs = floor[ TILE_SIZE * (ih-y) / sh ]
             l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
             rs = 1<<l; // rs = 2^l
         } else { // no exact boundary--just use the first one bigger than will fit in given source region
@@ -491,8 +493,8 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
 
         // At this point, we have rs = 2^l.
-        // In Djatoka-world, rs = TILESIZE * 2^(maxImageLevels -level) == 2^(maxImageLevels -level +log2(TILESIZE)). So solve for "level".
-        level = hwl[2] + TILE_LOG2 - l;
+        // In Djatoka-world, rs = TILESIZE * 2^(maxLevels -level) == 2^(maxLevels -level +log2(TILESIZE)). So solve for "level".
+        level = maxLevels + TILE_LOG2 - l;
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
         }
@@ -508,32 +510,32 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
 
         // calculate what both scale dimensions should be, even if they are given as -1 for default.
-        final int explicitSh = Math.min(Math.round((float)(TILE_SIZE*(hwl[0]-y))/(float)rs),TILE_SIZE);
-        final int explicitSw = Math.min(Math.round((float)(TILE_SIZE*(hwl[1]-x))/(float)rs),TILE_SIZE);
+        final int explicitSh = Math.min(Math.round((float)(TILE_SIZE*(ih-y))/(float)rs),TILE_SIZE);
+        final int explicitSw = Math.min(Math.round((float)(TILE_SIZE*(iw-x))/(float)rs),TILE_SIZE);
 
         // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
         // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
-        if (level > hwl[2]) {
+        if (level > maxLevels) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region and scale correspond to zoom level "+level+" above this image's max of "+hwl[2]);
+                    "region and scale correspond to zoom level "+level+" above this image's max of "+maxLevels);
         } else if (x % rs != 0 || y % rs != 0) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "region x and y coords "+x+","+y+" must fall evenly on boundary of "+rs+" when zoom level is"+level);
-        } else if (rh != Math.min(hwl[0]-y, rs)) {
+        } else if (rh != Math.min(ih-y, rs)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region height "+rh+" should be "+Math.min(hwl[0]-y, rs)+" when region size is "+rs
-                    +" and bottom edge is "+Integer.toString(hwl[0]-y)+" away");
-        } else if (rw != Math.min(hwl[1]-x, rs)) {
+                    "region height "+rh+" should be "+Math.min(ih-y, rs)+" when region size is "+rs
+                    +" and bottom edge is "+Integer.toString(ih-y)+" away");
+        } else if (rw != Math.min(iw-x, rs)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region width "+rw+" should be "+Math.min(hwl[1]-x, rs)+" when region size is "+rs
-                     +" and right edge is "+Integer.toString(hwl[1]-x)+" away");
+                    "region width "+rw+" should be "+Math.min(iw-x, rs)+" when region size is "+rs
+                     +" and right edge is "+Integer.toString(iw-x)+" away");
         } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely--only at level < 1—-OSD rounds up when should dn.
-            final float raw = (float)(TILE_SIZE*(hwl[0]-y))/(float)rs;
+            final float raw = (float)(TILE_SIZE*(ih-y))/(float)rs;
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         } else if (sw != -1 && Math.abs(explicitSw - sw) > 1) {
-            final float raw = (float)(TILE_SIZE*(hwl[1]-x))/(float)rs;
+            final float raw = (float)(TILE_SIZE*(iw-x))/(float)rs;
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
@@ -564,23 +566,23 @@ public class ImageServlet extends HttpServlet implements Constants {
     }
 
     /**
-     * Gets basic metadata for the names image, whether from a stored file or a live Djatoka request.
+     * Gets basic metadata for the named image, whether from a stored file or a live Djatoka request.
      * After calling, there will be a metadata.xml file in the image's tile cache directory to
      * speed things up next time.
      * If this has been called recently for this item, it doesn't even need the metadata.xml file;
      * it uses an in-memory cache for basically no work.
      * @param id the identifier of the image to look up
-     * @return an array with height, width, and levels for the named image
+     * @return an ImageInfo for the named image
      * @throws HttpErrorException if anything couldn't be looked up, read, or written
      */
-    private int[] getMetadataWithCaching(final String id)
+    private ImageInfo getImageInfoWithCaching(final String id)
         throws HttpErrorException {
 
         // check for cached value
-        int[] hwl;
-        if (recentHWL.containsKey(id)) {
-            return recentHWL.get(id);
+        if (recentImageInfo.containsKey(id)) {
+            return recentImageInfo.get(id);
         }
+        ImageInfo imageInfo;
 
         PairtreeObject cacheObject;
         try {
@@ -593,19 +595,19 @@ public class ImageServlet extends HttpServlet implements Constants {
         // check for existing metadata.xml, and either read it or fetch data and create it
         final File xmlFile = new File(cacheObject, filename + ".xml");
         if (xmlFile.exists() && xmlFile.length() > 0) {
-            hwl = readMetadataFile(xmlFile);
+            imageInfo = readMetadataFile(id, xmlFile);
         } else {
             //TODO: make property for whether to allow cache misses, for example when always pre-generating tiles
-            hwl = fetchMetadata(id, internalServer);
-            writeMetadataFile(xmlFile, hwl);
+            imageInfo = fetchMetadata(id, internalServer);
+            writeMetadataFile(xmlFile, imageInfo);
         }
 
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Returning height/width/levels: {}/{}/{}", hwl[0], hwl[1], hwl[2]);
+            LOGGER.debug("Returning height/width/levels: {}/{}/{}", imageInfo.getHeight(), imageInfo.getWidth(), imageInfo.getLevels());
         }
 
-        recentHWL.put(id, hwl);
-        return hwl;
+        recentImageInfo.put(id, imageInfo);
+        return imageInfo;
     }
 
     /**
@@ -613,10 +615,11 @@ public class ImageServlet extends HttpServlet implements Constants {
      * and levels.
      * @param id image identifier to ask about
      * @param serverName a name to access this server: may be internal or public, so long as it works.
-     * @return an array with the three values
+     * @return an ImageInfo for the named image, with values fetched from serverName using a Djatoka
+     *         metadata query
      * @throws HttpErrorException if couldn't connect and read values successfully
      */
-    private int[] fetchMetadata(String id, String serverName) throws HttpErrorException {
+    private ImageInfo fetchMetadata(String id, String serverName) throws HttpErrorException {
         // Construct URL and query for the "resolver" servlet on this same server, but don't omit contextPath
         // because we'll be dispatching it externally to this webapp.
         URL url;
@@ -657,17 +660,18 @@ public class ImageServlet extends HttpServlet implements Constants {
                 conn.disconnect();
             }
         }
-        return new int[] { json.get("height").asInt(), json.get("width").asInt(), json.get("levels").asInt() };
+        return new ImageInfo(id, json.get("height").asInt(), json.get("width").asInt(), json.get("levels").asInt());
     }
 
     /**
      * Reads a metadata XML file for an image's height, width, and levels.
      * If values are missing or not integers, defaults to 0.
+     * @param id the identifier of the image whose metadata file we're reading
      * @param xmlFile file (matching template.xml) with the values. File must exist.
-     * @return the three values in an array
+     * @return an ImageInfo for the named image, with values read from xmlFile
      * @throws HttpErrorException if couldn't read the file
      */
-    private int[] readMetadataFile(File xmlFile) throws HttpErrorException {
+    private ImageInfo readMetadataFile(String id, File xmlFile) throws HttpErrorException {
         int width = 0, height = 0, levels = 0; // default values
 
         if (LOGGER.isDebugEnabled()) {
@@ -700,16 +704,16 @@ public class ImageServlet extends HttpServlet implements Constants {
             }
         }
 
-        return new int[] { height, width, levels };
+        return new ImageInfo(id, height, width, levels);
     }
 
     /**
      * Takes an image's simple metadata and writes it to a file
      * @param xmlFile the metadata.xml file for an image to write to, patterned after a template
-     * @param hwl the height, width, and levels of the image whose metadata.xml we're writing
+     * @param imageInfo an ImageInfo with values for the image whose metadata.xml we're writing
      * @throws HttpErrorException if couldn't read the template or write the data
      */
-    private void writeMetadataFile(File xmlFile, int[] hwl) throws HttpErrorException {
+    private void writeMetadataFile(File xmlFile, ImageInfo imageInfo) throws HttpErrorException {
         InputStream inStream = null;
         OutputStream outStream = null;
         try {
@@ -743,9 +747,9 @@ public class ImageServlet extends HttpServlet implements Constants {
             final Attribute wAttribute = sElement.getAttribute("Width");
             final Element lElement = root.getFirstChildElement("Levels");
 
-            hAttribute.setValue(Integer.toString(hwl[0]));
-            wAttribute.setValue(Integer.toString(hwl[1]));
-            lElement.appendChild(Integer.toString(hwl[2]));
+            hAttribute.setValue(Integer.toString(imageInfo.getHeight()));
+            wAttribute.setValue(Integer.toString(imageInfo.getWidth()));
+            lElement.appendChild(Integer.toString(imageInfo.getLevels()));
 
             // copy from populated template (backed by inStream) to image's metatada file (backed by outStream)
             if (LOGGER.isDebugEnabled()) {
