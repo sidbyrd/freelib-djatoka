@@ -438,11 +438,11 @@ public class ImageServlet extends HttpServlet implements Constants {
 
     /**
      * Computes the Djatoka zoom level that the given image size, region, and scale correspond to.
-     * Validates all settings to make sure they correspond to valid combinations, like making
+     * Validates all settings to make sure they represent valid combinations, like making
      * sure the region x,y coords start on an even multiple of the correct power of two, etc.
      * May modify the scale to make both its dimensions explicit if they weren't already.
      *
-     * We bothered to encode our JP2s with these nifty levels. And the decode faster and at higher
+     * We bothered to encode our JP2s with these nifty levels. And they decode faster and at higher
      * quality. Let's use them!
      * @param imageInfo the ImageInfo with details about the image in question
      * @param region the region of interest within the source image
