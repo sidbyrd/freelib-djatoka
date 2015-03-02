@@ -135,13 +135,14 @@ public class Size {
             }
         } else if (mySizeIsPercent) {
             if (hasWidth()) {
-                myWidth = (int)(regionWidth * myWidth*0.01);
+                myWidth = (int)(regionWidth * myPercent*0.01);
             }
             if (hasHeight()) {
-                myHeight = (int)(regionHeight * myHeight*0.01);
+                myHeight = (int)(regionHeight * myPercent*0.01);
             }
         }
         mySizeIsPercent = false;
+        myPercent = -1;
     }
 
     /**
@@ -157,6 +158,7 @@ public class Size {
         myAspectRatioIsPreserved = false; // semantically false, but this actually just means "is w or h -1 ?"
         mySizeIsFull = false; // means don't toString() as "full", not whether it has full coverage.
         mySizeIsPercent = false;
+        myPercent = -1;
     }
 
     /**
@@ -244,7 +246,7 @@ public class Size {
             if (isFullSize()) {
                 builder.append("full");
             } else if (isPercent()) {
-                builder.append(Float.toString((float) myPercent / 100));
+                builder.append(Float.toString((float)myPercent*0.01f));
             } else {
                 if (hasHeight() && hasWidth()) {
                     builder.append('!').append(myWidth).append(',');
@@ -273,7 +275,7 @@ public class Size {
         if (isFullSize()) {
             builder.append("1.0"); // single scaling factor instead of w & h
         } else if (isPercent()) {
-            builder.append(Float.toString((float) myPercent / 100)); // single scaling factor instead of w & h
+            builder.append(Float.toString((float) myPercent*0.01f)); // single scaling factor instead of w & h
         } else {
             builder.append(myWidth).append(',').append(myHeight); // if either is "-1", send it unaltered.
         }

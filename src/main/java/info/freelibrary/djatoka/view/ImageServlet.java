@@ -60,12 +60,12 @@ public class ImageServlet extends HttpServlet implements Constants {
     static final String EM_STYLE_REGION_NUMERIC = "Region not numeric or \"full\"";
     static final String EM_STYLE_ROTATION_0 = "Rotation not 0";
     static final String EM_STYLE_REGION_MAX_DIMS = "Region dimensions extend beyond image";
-    static final String EM_REGION_MAX_COORDS = "Region coords do not start within image";
+    static final String EM_REGION_MAX_COORDS = "Region coordinates do not start within image";
     static final String EM_TILE_MAX = "Scaled size exceeds max tile size";
     static final String EM_LEVEL_MIN = "Implied zoom level is below allowed minimum";
     static final String EM_LEVEL_MAX = "Implied zoom level is above image's maximum";
     static final String EM_REGION_BOUNDARY_DIMS = "Region dimensions do not end on proper boundary";
-    static final String EM_REGION_BOUNDARY_COORDS = "Region coords do not start on proper boundary";
+    static final String EM_REGION_BOUNDARY_COORDS = "Region coordinates do not start on proper boundary";
     static final String EM_REGION_HEIGHT = "Region height doesn't match implied zoom level";
     static final String EM_REGION_WIDTH = "Region width doesn't match implied zoom level";
     static final String EM_SCALED_HEIGHT = "Scaled height doesn't match implied zoom level";
@@ -115,7 +115,7 @@ public class ImageServlet extends HttpServlet implements Constants {
      * to the zoom level desired (and legal for the requested image). Dispatches djatoka request
      * using the svc.level option for faster and higher quality results, and returns an error to
      * any requests for region+scale that doesn't align properly with zoom levels. Compatible with
-     * OpenSeaDragon. Reduces possible space of parameters to something finite (and pre-generatable).
+     * OpenSeaDragon. Reduces possible space of parameters to something finite (and pre-generate-able).
      */
     private boolean requireLevels = true;
 
@@ -212,7 +212,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             }
         }
 
-        // get the base URL that this whole webapp is server at (relative to server root)
+        // get the base URL that this whole webapp is at (relative to server root)
         contextPath = getServletContext().getContextPath();
         LOGGER.debug("IIIF servlet using context path of {}", contextPath);
 
