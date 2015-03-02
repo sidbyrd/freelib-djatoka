@@ -53,36 +53,36 @@ public class ImageServlet extends HttpServlet implements Constants {
     private static final String XML_TEMPLATE = "/WEB-INF/metadata.xml";
 
     /**
-     * IIIFException detail messages
+     * IIIFException HTTP error messages
      */
-    static final String STYLE_SCALE_NUMERIC = "Scale not numeric";
-    static final String STYLE_SCALE_CONSTRAINED = "Scale may not constrain both dimensions";
-    static final String STYLE_REGION_NUMERIC = "Region not numeric or \"full\"";
-    static final String STYLE_ROTATION_0 = "Rotation not 0";
-    static final String STYLE_REGION_MAX_DIMS = "Region dimensions extend beyond image";
-    static final String REGION_MAX_COORDS = "Region coords do not start within image";
-    static final String TILE_MAX = "Scaled size exceeds max tile size";
-    static final String LEVEL_MIN = "Implied zoom level is below allowed minimum";
-    static final String LEVEL_MAX = "Implied zoom level is above image's maximum";
-    static final String REGION_BOUNDARY_DIMS = "Region dimensions do not end on proper boundary";
-    static final String REGION_BOUNDARY_COORDS = "Region coords do not start on proper boundary";
-    static final String REGION_HEIGHT = "Region height doesn't match implied zoom level";
-    static final String REGION_WIDTH = "Region width doesn't match implied zoom level";
-    static final String SCALED_HEIGHT = "Scaled height doesn't match implied zoom level";
-    static final String SCALED_WIDTH = "Scaled width doesn't match implied zoom level";
-    static final String SEND_METADATA = "Couldn't send metadata";
-    static final String CONFIG = "Configuration error";
-    static final String NOT_FOUND = "Identifier not found";
-    static final String RESOLVER = "Error in resolver";
-    static final String METADATA_FETCH = "Couldn't fetch image metadata";
-    static final String TEMPLATE_XML_READ = "Couldn't read metadata template file";
-    static final String TEMPLATE_XML_INVALID = "Invalid metadata template file";
-    static final String METADATA_XML_READ = "Couldn't read image metadata file";
-    static final String METADATA_XML_INVALID = "Invalid image metadata file";
-    static final String METADATA_XML_WRITE = "Couldn't write image metadata file";
-    static final String TILECACHE_ACCESS = "Couldn't access tile cache";
-    static final String SEND_IMAGE = "Couldn't send image";
-    static final String DISPATCH = "Couldn't dispatch to resolver";
+    static final String EM_STYLE_SCALE_NUMERIC = "Scale not numeric";
+    static final String EM_STYLE_SCALE_CONSTRAINED = "Scale may not constrain both dimensions";
+    static final String EM_STYLE_REGION_NUMERIC = "Region not numeric or \"full\"";
+    static final String EM_STYLE_ROTATION_0 = "Rotation not 0";
+    static final String EM_STYLE_REGION_MAX_DIMS = "Region dimensions extend beyond image";
+    static final String EM_REGION_MAX_COORDS = "Region coords do not start within image";
+    static final String EM_TILE_MAX = "Scaled size exceeds max tile size";
+    static final String EM_LEVEL_MIN = "Implied zoom level is below allowed minimum";
+    static final String EM_LEVEL_MAX = "Implied zoom level is above image's maximum";
+    static final String EM_REGION_BOUNDARY_DIMS = "Region dimensions do not end on proper boundary";
+    static final String EM_REGION_BOUNDARY_COORDS = "Region coords do not start on proper boundary";
+    static final String EM_REGION_HEIGHT = "Region height doesn't match implied zoom level";
+    static final String EM_REGION_WIDTH = "Region width doesn't match implied zoom level";
+    static final String EM_SCALED_HEIGHT = "Scaled height doesn't match implied zoom level";
+    static final String EM_SCALED_WIDTH = "Scaled width doesn't match implied zoom level";
+    static final String EM_CONFIG = "Configuration error";
+    static final String EM_RESOLVER_NOT_FOUND = "Identifier not found";
+    static final String EM_RESOLVER_DISPATCH = "Couldn't dispatch to resolver";
+    static final String EM_IMAGE_FETCH = "Couldn't fetch image tile";
+    static final String EM_METADATA_FETCH = "Couldn't fetch image metadata";
+    static final String EM_METADATA_XML_READ = "Couldn't read image metadata file";
+    static final String EM_METADATA_XML_INVALID = "Invalid image metadata file";
+    static final String EM_METADATA_XML_WRITE = "Couldn't write image metadata file";
+    static final String EM_TEMPLATE_XML_READ = "Couldn't read metadata template file";
+    static final String EM_TEMPLATE_XML_INVALID = "Invalid metadata template file";
+    static final String EM_TILECACHE_ACCESS = "Couldn't access tile cache";
+    static final String EM_SEND_METADATA = "Couldn't send metadata";
+    static final String EM_SEND_IMAGE = "Couldn't send image";
 
     /**
      * Max dimension of generated tiles.
@@ -390,9 +390,9 @@ public class ImageServlet extends HttpServlet implements Constants {
             }
         } catch (final JsonProcessingException e) {
             // "couldn't make JSON"
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, CONFIG, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_CONFIG, e);
         } catch (final IOException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, SEND_METADATA, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_SEND_METADATA, e);
         } finally {
             IOUtils.closeQuietly(outStream);
         }
@@ -422,10 +422,10 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // validate some obvious basics
         if (region.getX() > imageWidth || region.getY() > imageHeight) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_MAX_COORDS);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_MAX_COORDS);
         }
         if (scale.getHeight() > TILE_SIZE || scale.getWidth() > TILE_SIZE) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, TILE_MAX);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_TILE_MAX);
         }
 
         if (requireOsdStyle) {
@@ -465,16 +465,16 @@ public class ImageServlet extends HttpServlet implements Constants {
      */
     private void validateOsdStyle(ImageInfo imageInfo, Region region, Size scale, float rotation) throws IIIFException {
         if (scale.isFullSize() || scale.isPercent()) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, STYLE_SCALE_NUMERIC);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_STYLE_SCALE_NUMERIC);
         } else if ((scale.hasWidth() && scale.hasHeight()) || !scale.maintainsAspectRatio()) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, STYLE_SCALE_CONSTRAINED);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_STYLE_SCALE_CONSTRAINED);
         } else if (region.usesPercents()) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, STYLE_REGION_NUMERIC);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_STYLE_REGION_NUMERIC);
         } else if (rotation != 0f) { // OSD rotates the HTML canvas instead
-            throw new IIIFException(HttpServletResponse.SC_NOT_IMPLEMENTED, STYLE_ROTATION_0);
+            throw new IIIFException(HttpServletResponse.SC_NOT_IMPLEMENTED, EM_STYLE_ROTATION_0);
         } else if (region.getY()+region.getHeight() > imageInfo.getHeight()
                    || region.getX()+region.getWidth() > imageInfo.getWidth()) {
-            throw new IIIFException(HttpServletResponse.SC_NOT_IMPLEMENTED, STYLE_REGION_MAX_DIMS);
+            throw new IIIFException(HttpServletResponse.SC_NOT_IMPLEMENTED, EM_STYLE_REGION_MAX_DIMS);
         }
     }
 
@@ -513,10 +513,10 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // pre-validations that apply when using levels
         if (rw < iw-rx && !isExactPowerOf2(rw)) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_BOUNDARY_DIMS,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_BOUNDARY_DIMS,
                     "region width "+rw+" not a power of two and not limited by image edge");
         } else if (rh < ih-ry && !isExactPowerOf2(rh)) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_BOUNDARY_DIMS,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_BOUNDARY_DIMS,
                     "region height "+rh+" not a power of two and not limited by image edge");
         }
 
@@ -556,7 +556,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             if (level >= minZoomLevel) {
                 level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
             } else {
-                throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, LEVEL_MIN,
+                throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_LEVEL_MIN,
                         "region and scale correspond to zoom level "+level+" below allowed min of "+minZoomLevel);
             }
         }
@@ -568,27 +568,27 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
         // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
         if (level > il) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, LEVEL_MAX,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_LEVEL_MAX,
                     "region and scale correspond to zoom level "+level+" above this image's max of "+il);
         } else if (rx % rs != 0 || ry % rs != 0) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_BOUNDARY_COORDS,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_BOUNDARY_COORDS,
                     "region rx and ry coords "+rx+","+ry+" must fall evenly on boundary of "+rs+" when zoom level is"+level);
         } else if (rh != Math.min(ih-ry, rs)) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_HEIGHT,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_HEIGHT,
                     "region height "+rh+" should be "+Math.min(ih-ry, rs)+" when region size is "+rs
                     +" and bottom edge is "+Integer.toString(ih - ry)+" away");
         } else if (rw != Math.min(iw-rx, rs)) {
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_WIDTH,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_WIDTH,
                     "region width "+rw+" should be "+Math.min(iw-rx, rs)+" when region size is "+rs
                      +" and right edge is "+Integer.toString(iw - rx)+" away");
         } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely--only at level < 1—-OSD rounds up when should dn.
             final float raw = (float)(TILE_SIZE*(ih-ry))/(float)rs;
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, SCALED_HEIGHT,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_SCALED_HEIGHT,
                     "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         } else if (sw != -1 && Math.abs(explicitSw - sw) > 1) {
             final float raw = (float)(TILE_SIZE*(iw-rx))/(float)rs;
-            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, SCALED_WIDTH,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_SCALED_WIDTH,
                     "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         }
@@ -637,7 +637,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             try {
                 cacheObject = tileCache.getObject(id);
             } catch (IOException e) {
-                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TILECACHE_ACCESS, e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_TILECACHE_ACCESS, e);
             }
             final String filename = PairtreeUtils.encodeID(id);
 
@@ -680,7 +680,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                           + StringUtils.format(RESOLVE_METADATA_QUERY, URLEncode.pathSafetyEncode(id)));
         } catch (MalformedURLException e) {
             // "couldn't refer to resolver"
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, CONFIG, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_CONFIG, e);
         }
 
         // Retrieve and parse JSON
@@ -698,16 +698,16 @@ public class ImageServlet extends HttpServlet implements Constants {
             conn.setConnectTimeout(10000); // 10 sec == 10000 ms. Don't freeze forever if the resolver hangs somehow
             conn.setReadTimeout(10000);
             if (conn.getResponseCode()==HttpServletResponse.SC_NOT_FOUND) {
-                throw new IIIFException(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND);
+                throw new IIIFException(HttpServletResponse.SC_NOT_FOUND, EM_RESOLVER_NOT_FOUND);
             } else if (conn.getResponseCode() >= 400) {
-                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, RESOLVER,
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_IMAGE_FETCH,
                         "error "+conn.getResponseCode()+" in resolver");
             } // if 30X code (redirect) or something, I guess it either works or it doesn't.
 
             connIn = conn.getInputStream();
             json = MAPPER.readTree(connIn); // read before closing input stream in finally{}
         } catch (IOException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_FETCH, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_METADATA_FETCH, e);
         } finally {
             IOUtils.closeQuietly(connIn);
             if (conn != null) {
@@ -736,9 +736,9 @@ public class ImageServlet extends HttpServlet implements Constants {
         try {
             xml = new Builder().build(xmlFile);
         } catch (IOException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_XML_READ, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_METADATA_XML_READ, e);
         } catch (ParsingException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_XML_INVALID, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_METADATA_XML_INVALID, e);
         }
         final Element root = xml.getRootElement();
         final Element sElement = root.getFirstChildElement("Size");
@@ -778,9 +778,9 @@ public class ImageServlet extends HttpServlet implements Constants {
                 inStream = getServletContext().getResource(XML_TEMPLATE).openStream();
                 templateXml = new Builder().build(inStream);
             } catch (IOException e) {
-                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TEMPLATE_XML_READ, e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_TEMPLATE_XML_READ, e);
             } catch (ParsingException e) {
-                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TEMPLATE_XML_INVALID, e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_TEMPLATE_XML_INVALID, e);
             }
 
             // output is metadata.xml for image
@@ -815,7 +815,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 serializer.write(templateXml);
                 serializer.flush();
             } catch (IOException e) {
-                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_XML_WRITE, e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_METADATA_XML_WRITE, e);
             }
         } finally {
             IOUtils.closeQuietly(outStream);
@@ -846,7 +846,7 @@ public class ImageServlet extends HttpServlet implements Constants {
         try {
             cacheObject = tileCache.getObject(aID);
         } catch (IOException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TILECACHE_ACCESS, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_TILECACHE_ACCESS, e);
         }
         final String fileName = CacheUtils.getFileName(aLevel, aRegion, aScale, aRotation);
         final File imageFile = new File(cacheObject, fileName);
@@ -887,7 +887,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
             IOUtils.copyStream(imageFile, outStream);
         } catch (IOException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, SEND_IMAGE, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_SEND_IMAGE, e);
         } finally {
             IOUtils.closeQuietly(outStream);
         }
@@ -938,9 +938,9 @@ public class ImageServlet extends HttpServlet implements Constants {
         try {
             dispatcher.forward(aRequest, aResponse);
         } catch (IOException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, DISPATCH, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_RESOLVER_DISPATCH, e);
         } catch (ServletException e) {
-            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, DISPATCH, e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, EM_RESOLVER_DISPATCH, e);
         }
     }
 
