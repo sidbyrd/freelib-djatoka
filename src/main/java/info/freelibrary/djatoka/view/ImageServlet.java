@@ -53,6 +53,38 @@ public class ImageServlet extends HttpServlet implements Constants {
     private static final String XML_TEMPLATE = "/WEB-INF/metadata.xml";
 
     /**
+     * IIIFException detail messages
+     */
+    static final String STYLE_SCALE_NUMERIC = "Scale not numeric";
+    static final String STYLE_SCALE_CONSTRAINED = "Scale may not constrain both dimensions";
+    static final String STYLE_REGION_NUMERIC = "Region not numeric or \"full\"";
+    static final String STYLE_ROTATION_0 = "Rotation not 0";
+    static final String STYLE_REGION_MAX_DIMS = "Region dimensions extend beyond image";
+    static final String REGION_MAX_COORDS = "Region coords do not start within image";
+    static final String TILE_MAX = "Scaled size exceeds max tile size";
+    static final String LEVEL_MIN = "Implied zoom level is below allowed minimum";
+    static final String LEVEL_MAX = "Implied zoom level is above image's maximum";
+    static final String REGION_BOUNDARY_DIMS = "Region dimensions do not end on proper boundary";
+    static final String REGION_BOUNDARY_COORDS = "Region coords do not start on proper boundary";
+    static final String REGION_HEIGHT = "Region height doesn't match implied zoom level";
+    static final String REGION_WIDTH = "Region width doesn't match implied zoom level";
+    static final String SCALED_HEIGHT = "Scaled height doesn't match implied zoom level";
+    static final String SCALED_WIDTH = "Scaled width doesn't match implied zoom level";
+    static final String SEND_METADATA = "Couldn't send metadata";
+    static final String CONFIG = "Configuration error";
+    static final String NOT_FOUND = "Identifier not found";
+    static final String RESOLVER = "Error in resolver";
+    static final String METADATA_FETCH = "Couldn't fetch image metadata";
+    static final String TEMPLATE_XML_READ = "Couldn't read metadata template file";
+    static final String TEMPLATE_XML_INVALID = "Invalid metadata template file";
+    static final String METADATA_XML_READ = "Couldn't read image metadata file";
+    static final String METADATA_XML_INVALID = "Invalid image metadata file";
+    static final String METADATA_XML_WRITE = "Couldn't write image metadata file";
+    static final String TILECACHE_ACCESS = "Couldn't access tile cache";
+    static final String SEND_IMAGE = "Couldn't send image";
+    static final String DISPATCH = "Couldn't dispatch to resolver";
+
+    /**
      * Max dimension of generated tiles.
      * This should really be a config property, but it's already hardcoded in like a million places.
      * Also, I can't even import this const from anywhere else because it doesn't exist. Unbelievable!
@@ -217,9 +249,9 @@ public class ImageServlet extends HttpServlet implements Constants {
         if (pair.getKey().equals(HttpServletResponse.SC_OK)) {
             try {
                 serveJpgFile(pair.getValue(), aResponse);
-            } catch (HttpErrorException e) {
+            } catch (IIIFException e) {
                 LOGGER.warn("couldn't serve file "+pair.getValue()+" : "+e.getMessage());
-                aResponse.sendError(pair.getKey(), pair.getValue());
+                aResponse.sendError(e.getHttpCode(), e.getHttpMessage());
             }
         } else {
             aResponse.sendError(pair.getKey(), pair.getValue());
@@ -283,14 +315,15 @@ public class ImageServlet extends HttpServlet implements Constants {
                 } else {
                     aResponse.sendError(HttpServletResponse.SC_NOT_IMPLEMENTED, "unrecognized IIIF message type");
                 }
-            } catch (HttpErrorException re) {
+            } catch (IIIFException re) {
                 // send any error messages
                 serveAndCache(re.getPair(), aRequest, aResponse);
                 // log the error if appropriate
-                if (LOGGER.isWarnEnabled()) {
-                    final boolean isWarn = re.getCode() >= 500; // actual error, not just "not found" or something
+                if (LOGGER.isWarnEnabled()) { // == isWarnEnabled() || isDebugEnabled(), since former implies latter.
+                    // log as WARN if it's an actual server error, not just "not found" or "bad request" or some other client error
+                    final boolean isWarn = re.getHttpCode() >= 500;
                     if (isWarn || LOGGER.isDebugEnabled()) {
-                        StringBuilder message = new StringBuilder().append("error ").append(re.getCode())
+                        StringBuilder message = new StringBuilder().append("error ").append(re.getHttpCode())
                                 .append(": ").append(re.getMessage());
                         if (re.getCause() != null) {
                             message=message.append(" from ").append(re.getCause());
@@ -331,10 +364,10 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param iiif parsed parameters of the request
      * @param aRequest HTTP request being fulfilled
      * @param aResponse HTTP response to serve out on
-     * @throws HttpErrorException if error retrieving or formatting metadata or copying metadata
+     * @throws IIIFException if error retrieving or formatting metadata or copying metadata
      */
     protected void doInfoRequest(final InfoRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
-            throws HttpErrorException {
+            throws IIIFException {
         // fetch the metadata that is being requested
         final ImageInfo imageInfo = getImageInfoWithCaching(iiif.getIdentifier());
 
@@ -356,9 +389,10 @@ public class ImageServlet extends HttpServlet implements Constants {
                 outStream.print(imageInfo.toJSON(server, prefix));
             }
         } catch (final JsonProcessingException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "couldn't make JSON", e);
+            // "couldn't make JSON"
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, CONFIG, e);
         } catch (final IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "couldn't copy metadata to output", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, SEND_METADATA, e);
         } finally {
             IOUtils.closeQuietly(outStream);
         }
@@ -369,10 +403,10 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param iiif parsed parameters of the request
      * @param aRequest HTTP request being fulfilled
      * @param aResponse HTTP response to serve out on
-     * @throws HttpErrorException if error retrieving or sending image, or if parameters are invalid
+     * @throws IIIFException if error retrieving or sending image, or if parameters are invalid
      */
     protected void doImageRequest(final ImageRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
-            throws HttpErrorException {
+            throws IIIFException {
         final String id = iiif.getIdentifier();
         final ImageInfo imageInfo = getImageInfoWithCaching(id); // of source image; already cached if user requested metadata
         final Region region = iiif.getRegion(); // refers to a region within source image, at native resolution
@@ -388,15 +422,15 @@ public class ImageServlet extends HttpServlet implements Constants {
 
         // validate some obvious basics
         if (region.getX() > imageWidth || region.getY() > imageHeight) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "region x/y coords exceed image size of "+imageWidth+","+imageHeight);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_MAX_COORDS);
         }
         if (scale.getHeight() > TILE_SIZE || scale.getWidth() > TILE_SIZE) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "scaled dimension exceeds max of "+TILE_SIZE);
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, TILE_MAX);
         }
 
         if (requireOsdStyle) {
             // Do this before normalization, because that un-uses certain features that we want to ban beforehand.
-            validateOsdStyle(region, scale, rotation);
+            validateOsdStyle(imageInfo, region, scale, rotation);
         }
 
         // get rid of stuff like percentages and scale==full, and force use of region==full if applicable.
@@ -423,20 +457,24 @@ public class ImageServlet extends HttpServlet implements Constants {
     /**
      * Checks the given IIIF parameters to make sure they don't use any features or values that
      * OpenSeaDragon is known to never use.
+     * @param imageInfo image metadata
      * @param region IIIF region
      * @param scale IIIF scale
      * @param rotation IIIF rotation
-     * @throws info.freelibrary.djatoka.view.ImageServlet.HttpErrorException if something was invalid
+     * @throws IIIFException if something was invalid
      */
-    private void validateOsdStyle(Region region, Size scale, float rotation) throws HttpErrorException {
+    private void validateOsdStyle(ImageInfo imageInfo, Region region, Size scale, float rotation) throws IIIFException {
         if (scale.isFullSize() || scale.isPercent()) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "may only use direct numeric scale specification");
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, STYLE_SCALE_NUMERIC);
         } else if ((scale.hasWidth() && scale.hasHeight()) || !scale.maintainsAspectRatio()) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "may not specify both scaled dimensions or use '!'");
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, STYLE_SCALE_CONSTRAINED);
         } else if (region.usesPercents()) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "region may not use percent");
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, STYLE_REGION_NUMERIC);
         } else if (rotation != 0f) { // OSD rotates the HTML canvas instead
-            throw new HttpErrorException(HttpServletResponse.SC_NOT_IMPLEMENTED, "rotation must be 0");
+            throw new IIIFException(HttpServletResponse.SC_NOT_IMPLEMENTED, STYLE_ROTATION_0);
+        } else if (region.getY()+region.getHeight() > imageInfo.getHeight()
+                   || region.getX()+region.getWidth() > imageInfo.getWidth()) {
+            throw new IIIFException(HttpServletResponse.SC_NOT_IMPLEMENTED, STYLE_REGION_MAX_DIMS);
         }
     }
 
@@ -453,10 +491,10 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param scale the scale to generate the output tile at
      * @return the svc.level to request from Djatoka, or -1 to indicate that a level-based request
      *   would be inappropriate (even though settings were otherwise valid)
-     * @throws info.freelibrary.djatoka.view.ImageServlet.HttpErrorException if settings were invalid for using levels
+     * @throws IIIFException if settings were invalid for using levels
      */
     private int findLevelFromRegion(final ImageInfo imageInfo, final Region region, final Size scale)
-            throws HttpErrorException {
+            throws IIIFException {
         // Lots of equations, so extract simple local names for our inputs
         final int ih = imageInfo.getHeight();
         final int iw = imageInfo.getWidth();
@@ -474,13 +512,11 @@ public class ImageServlet extends HttpServlet implements Constants {
         int level;
 
         // pre-validations that apply when using levels
-        if (sw > TILE_SIZE || sh > TILE_SIZE) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "max tile size is " + TILE_SIZE);
-        } else if (rw < iw-rx && !isExactPowerOf2(rw)) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+        if (rw < iw-rx && !isExactPowerOf2(rw)) {
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_BOUNDARY_DIMS,
                     "region width "+rw+" not a power of two and not limited by image edge");
         } else if (rh < ih-ry && !isExactPowerOf2(rh)) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_BOUNDARY_DIMS,
                     "region height "+rh+" not a power of two and not limited by image edge");
         }
 
@@ -520,7 +556,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             if (level >= minZoomLevel) {
                 level = -1; // just do a standard level-less Region request instead, as long as the other conditions still hold.
             } else {
-                throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+                throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, LEVEL_MIN,
                         "region and scale correspond to zoom level "+level+" below allowed min of "+minZoomLevel);
             }
         }
@@ -532,27 +568,27 @@ public class ImageServlet extends HttpServlet implements Constants {
         // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
         // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
         if (level > il) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, LEVEL_MAX,
                     "region and scale correspond to zoom level "+level+" above this image's max of "+il);
         } else if (rx % rs != 0 || ry % rs != 0) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_BOUNDARY_COORDS,
                     "region rx and ry coords "+rx+","+ry+" must fall evenly on boundary of "+rs+" when zoom level is"+level);
         } else if (rh != Math.min(ih-ry, rs)) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_HEIGHT,
                     "region height "+rh+" should be "+Math.min(ih-ry, rs)+" when region size is "+rs
                     +" and bottom edge is "+Integer.toString(ih - ry)+" away");
         } else if (rw != Math.min(iw-rx, rs)) {
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, REGION_WIDTH,
                     "region width "+rw+" should be "+Math.min(iw-rx, rs)+" when region size is "+rs
                      +" and right edge is "+Integer.toString(iw - rx)+" away");
         } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely--only at level < 1—-OSD rounds up when should dn.
             final float raw = (float)(TILE_SIZE*(ih-ry))/(float)rs;
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, SCALED_HEIGHT,
                     "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         } else if (sw != -1 && Math.abs(explicitSw - sw) > 1) {
             final float raw = (float)(TILE_SIZE*(iw-rx))/(float)rs;
-            throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
+            throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, SCALED_WIDTH,
                     "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         }
@@ -589,10 +625,9 @@ public class ImageServlet extends HttpServlet implements Constants {
      * it uses an in-memory cache for basically no work.
      * @param id the identifier of the image to look up
      * @return an ImageInfo for the named image
-     * @throws HttpErrorException if anything couldn't be looked up, read, or written
+     * @throws IIIFException if anything couldn't be looked up, read, or written
      */
-    private ImageInfo getImageInfoWithCaching(final String id)
-        throws HttpErrorException {
+    private ImageInfo getImageInfoWithCaching(final String id) throws IIIFException {
 
         // check for cached value
         ImageInfo imageInfo = (recentImageInfo==null)?null : recentImageInfo.get(id);
@@ -602,7 +637,7 @@ public class ImageServlet extends HttpServlet implements Constants {
             try {
                 cacheObject = tileCache.getObject(id);
             } catch (IOException e) {
-                throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't access tile cache", e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TILECACHE_ACCESS, e);
             }
             final String filename = PairtreeUtils.encodeID(id);
 
@@ -634,9 +669,9 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param serverName a name to access this server: may be internal or public, so long as it works.
      * @return an ImageInfo for the named image, with values fetched from serverName using a Djatoka
      *         metadata query
-     * @throws HttpErrorException if couldn't connect and read values successfully
+     * @throws IIIFException if couldn't connect and read values successfully
      */
-    private ImageInfo fetchMetadata(String id, String serverName) throws HttpErrorException {
+    private ImageInfo fetchMetadata(String id, String serverName) throws IIIFException {
         // Construct URL and query for the "resolver" servlet on this same server, but don't omit contextPath
         // because we'll be dispatching it externally to this webapp.
         URL url;
@@ -644,7 +679,8 @@ public class ImageServlet extends HttpServlet implements Constants {
             url = new URL(serverName + contextPath + resolverPath
                           + StringUtils.format(RESOLVE_METADATA_QUERY, URLEncode.pathSafetyEncode(id)));
         } catch (MalformedURLException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't refer to resolver servlet", e);
+            // "couldn't refer to resolver"
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, CONFIG, e);
         }
 
         // Retrieve and parse JSON
@@ -661,16 +697,17 @@ public class ImageServlet extends HttpServlet implements Constants {
             conn = (HttpURLConnection)url.openConnection();
             conn.setConnectTimeout(10000); // 10 sec == 10000 ms. Don't freeze forever if the resolver hangs somehow
             conn.setReadTimeout(10000);
-            if (conn.getResponseCode()==404) {
-                throw new HttpErrorException(HttpServletResponse.SC_NOT_FOUND, id+" not found");
+            if (conn.getResponseCode()==HttpServletResponse.SC_NOT_FOUND) {
+                throw new IIIFException(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND);
             } else if (conn.getResponseCode() >= 400) {
-                throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "error "+conn.getResponseCode()+" in resolver");
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, RESOLVER,
+                        "error "+conn.getResponseCode()+" in resolver");
             } // if 30X code (redirect) or something, I guess it either works or it doesn't.
 
             connIn = conn.getInputStream();
             json = MAPPER.readTree(connIn); // read before closing input stream in finally{}
         } catch (IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't fetch image metadata", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_FETCH, e);
         } finally {
             IOUtils.closeQuietly(connIn);
             if (conn != null) {
@@ -686,9 +723,9 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param id the identifier of the image whose metadata file we're reading
      * @param xmlFile file (matching template.xml) with the values. File must exist.
      * @return an ImageInfo for the named image, with values read from xmlFile
-     * @throws HttpErrorException if couldn't read the file
+     * @throws IIIFException if couldn't read the file
      */
-    private ImageInfo readMetadataFile(String id, File xmlFile) throws HttpErrorException {
+    private ImageInfo readMetadataFile(String id, File xmlFile) throws IIIFException {
         int width = 0, height = 0, levels = 0; // default values
 
         if (LOGGER.isDebugEnabled()) {
@@ -699,9 +736,9 @@ public class ImageServlet extends HttpServlet implements Constants {
         try {
             xml = new Builder().build(xmlFile);
         } catch (IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't read image metadata file", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_XML_READ, e);
         } catch (ParsingException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid image metadata file", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_XML_INVALID, e);
         }
         final Element root = xml.getRootElement();
         final Element sElement = root.getFirstChildElement("Size");
@@ -728,9 +765,9 @@ public class ImageServlet extends HttpServlet implements Constants {
      * Takes an image's simple metadata and writes it to a file
      * @param xmlFile the metadata.xml file for an image to write to, patterned after a template
      * @param imageInfo an ImageInfo with values for the image whose metadata.xml we're writing
-     * @throws HttpErrorException if couldn't read the template or write the data
+     * @throws IIIFException if couldn't read the template or write the data
      */
-    private void writeMetadataFile(File xmlFile, ImageInfo imageInfo) throws HttpErrorException {
+    private void writeMetadataFile(File xmlFile, ImageInfo imageInfo) throws IIIFException {
         InputStream inStream = null;
         OutputStream outStream = null;
         try {
@@ -741,9 +778,9 @@ public class ImageServlet extends HttpServlet implements Constants {
                 inStream = getServletContext().getResource(XML_TEMPLATE).openStream();
                 templateXml = new Builder().build(inStream);
             } catch (IOException e) {
-                throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't read template metadata", e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TEMPLATE_XML_READ, e);
             } catch (ParsingException e) {
-                throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Invalid template metadata file", e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TEMPLATE_XML_INVALID, e);
             }
 
             // output is metadata.xml for image
@@ -778,7 +815,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 serializer.write(templateXml);
                 serializer.flush();
             } catch (IOException e) {
-                throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't write image metadata", e);
+                throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, METADATA_XML_WRITE, e);
             }
         } finally {
             IOUtils.closeQuietly(outStream);
@@ -799,16 +836,17 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param aRequest HTTP request being fulfilled
      * @param aResponse HTTP response to serve on
      * @return the filename of a locally cached copy of the image, or null
-     * @throws info.freelibrary.djatoka.view.ImageServlet.HttpErrorException if couldn't read tilecache or dispatch request to OpenURL successfully
+     * @throws IIIFException if couldn't read tilecache or dispatch request to OpenURL successfully
      */
-    private String serveImageWithCaching(final String aID, final int aLevel, final Region aRegion, final Size aScale,
-                                         final float aRotation, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
-            throws HttpErrorException {
+    private String serveImageWithCaching(final String aID, final int aLevel, final Region aRegion,
+                                         final Size aScale, final float aRotation,
+                                         final HttpServletRequest aRequest, final HttpServletResponse aResponse)
+            throws IIIFException {
         PairtreeObject cacheObject;
         try {
             cacheObject = tileCache.getObject(aID);
         } catch (IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't access tile cache", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, TILECACHE_ACCESS, e);
         }
         final String fileName = CacheUtils.getFileName(aLevel, aRegion, aScale, aRotation);
         final File imageFile = new File(cacheObject, fileName);
@@ -835,9 +873,9 @@ public class ImageServlet extends HttpServlet implements Constants {
      * Serve a JPEG file's contents, given its full path
      * @param imagePath path to a JPG image file. File must exist!
      * @param aResponse response to serve the bits on
-     * @throws HttpErrorException if couldn't serve file
+     * @throws IIIFException if couldn't serve file
      */
-    private void serveJpgFile(final String imagePath, final HttpServletResponse aResponse) throws HttpErrorException {
+    private void serveJpgFile(final String imagePath, final HttpServletResponse aResponse) throws IIIFException {
         final File imageFile = new File(imagePath);
         ServletOutputStream outStream = null;
         try {
@@ -849,7 +887,7 @@ public class ImageServlet extends HttpServlet implements Constants {
 
             IOUtils.copyStream(imageFile, outStream);
         } catch (IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't send image", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, SEND_IMAGE, e);
         } finally {
             IOUtils.closeQuietly(outStream);
         }
@@ -865,11 +903,11 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param aRotation rotation of output tile
      * @param aRequest HTTP request being fulfilled
      * @param aResponse HTTP response to serve on
-     * @throws info.freelibrary.djatoka.view.ImageServlet.HttpErrorException if couldn't dispatch request to OpenURL successfully
+     * @throws IIIFException if couldn't dispatch request to OpenURL successfully
      */
     private void serveNewImage(final String aID, final int aLevel, final Region aRegion, final Size aScale,
                                       final float aRotation, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
-            throws HttpErrorException {
+            throws IIIFException {
         final String safeID = URLEncode.pathSafetyEncode(aID);
         RequestDispatcher dispatcher;
         String[] values;
@@ -900,9 +938,9 @@ public class ImageServlet extends HttpServlet implements Constants {
         try {
             dispatcher.forward(aRequest, aResponse);
         } catch (IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't dispatch to resolver", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, DISPATCH, e);
         } catch (ServletException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't dispatch to resolver", e);
+            throw new IIIFException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, DISPATCH, e);
         }
     }
 
@@ -985,30 +1023,6 @@ public class ImageServlet extends HttpServlet implements Constants {
         @Override
         protected boolean removeEldestEntry(final Map.Entry<K,V> eldest) {
             return super.size() > maxEntries;
-        }
-    }
-
-    /**
-     * Like a regular Exception, except for two things:
-     * 1) it has a different type, and
-     * 2) in addition to wrapping a message, it also wraps an HTTP response code.
-     * Thrown when an error page, with the indication response code and message, needs to be served.
-     */
-    private static class HttpErrorException extends Exception {
-        private int code; // an HTTPServletResponse.SC_* code
-        public HttpErrorException(int c, String message) {
-            super(message);
-            code = c;
-        }
-        public HttpErrorException(int c, String message, Exception parent) {
-            super(message, parent);
-            code = c;
-        }
-        public int getCode() {
-            return code;
-        }
-        public Map.Entry<Integer, String> getPair() {
-            return new AbstractMap.SimpleImmutableEntry<Integer, String>(code, getMessage());
         }
     }
 }
