@@ -99,7 +99,11 @@ public class ImageServlet extends HttpServlet implements Constants {
     /** path the resolver servlet is at, relative to contextPath */
     private String resolverPath = null;
 
-    /** recently accessed Height, Width, and Level lookups, keyed by identifier */
+    /**
+     * Recently accessed Height, Width, and Level lookups, keyed by identifier.
+     * Also caches JSON/SML output if a metadata query is performed against the key identifier.
+     * May safely be left null if you don't want to use caching here.
+     */
     private Map<String, ImageInfo> recentImageInfo = null;
     private static final int RECENT_HWL_SIZE = 500;
 
@@ -591,34 +595,35 @@ public class ImageServlet extends HttpServlet implements Constants {
         throws HttpErrorException {
 
         // check for cached value
-        if (recentImageInfo.containsKey(id)) {
-            return recentImageInfo.get(id);
-        }
-        ImageInfo imageInfo;
+        ImageInfo imageInfo = (recentImageInfo==null)?null : recentImageInfo.get(id);
 
-        PairtreeObject cacheObject;
-        try {
-            cacheObject = tileCache.getObject(id);
-        } catch (IOException e) {
-            throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't access tile cache", e);
-        }
-        final String filename = PairtreeUtils.encodeID(id);
+        if (imageInfo == null) {
+            PairtreeObject cacheObject;
+            try {
+                cacheObject = tileCache.getObject(id);
+            } catch (IOException e) {
+                throw new HttpErrorException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Couldn't access tile cache", e);
+            }
+            final String filename = PairtreeUtils.encodeID(id);
 
-        // check for existing metadata.xml, and either read it or fetch data and create it
-        final File xmlFile = new File(cacheObject, filename + ".xml");
-        if (xmlFile.exists() && xmlFile.length() > 0) {
-            imageInfo = readMetadataFile(id, xmlFile);
-        } else {
-            //TODO: make property for whether to allow cache misses, for example when always pre-generating tiles
-            imageInfo = fetchMetadata(id, internalServer);
-            writeMetadataFile(xmlFile, imageInfo);
+            // check for existing metadata.xml, and either read it or fetch data and create it
+            final File xmlFile = new File(cacheObject, filename + ".xml");
+            if (xmlFile.exists() && xmlFile.length() > 0) {
+                imageInfo = readMetadataFile(id, xmlFile);
+            } else {
+                //TODO: make property for whether to allow cache misses, for example when always pre-generating tiles
+                imageInfo = fetchMetadata(id, internalServer);
+                writeMetadataFile(xmlFile, imageInfo);
+            }
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Returning height/width/levels: {}/{}/{}", imageInfo.getHeight(), imageInfo.getWidth(), imageInfo.getLevels());
+            }
         }
 
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Returning height/width/levels: {}/{}/{}", imageInfo.getHeight(), imageInfo.getWidth(), imageInfo.getLevels());
+        if (recentImageInfo != null) {
+            recentImageInfo.put(id, imageInfo); // save or update last access time in cache
         }
-
-        recentImageInfo.put(id, imageInfo);
         return imageInfo;
     }
 
