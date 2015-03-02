@@ -327,7 +327,7 @@ public class ImageServlet extends HttpServlet implements Constants {
      * @param iiif parsed parameters of the request
      * @param aRequest HTTP request being fulfilled
      * @param aResponse HTTP response to serve out on
-     * @throws HttpErrorException if formatting metadata or copying metadata
+     * @throws HttpErrorException if error retrieving or formatting metadata or copying metadata
      */
     protected void doInfoRequest(final InfoRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws HttpErrorException {
@@ -360,6 +360,13 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
     }
 
+    /**
+     * Serves an IIIF image request
+     * @param iiif parsed parameters of the request
+     * @param aRequest HTTP request being fulfilled
+     * @param aResponse HTTP response to serve out on
+     * @throws HttpErrorException if error retrieving or sending image, or if parameters are invalid
+     */
     protected void doImageRequest(final ImageRequest iiif, final HttpServletRequest aRequest, final HttpServletResponse aResponse)
             throws HttpErrorException {
         final String id = iiif.getIdentifier();
@@ -446,24 +453,29 @@ public class ImageServlet extends HttpServlet implements Constants {
      */
     private int findLevelFromRegion(final ImageInfo imageInfo, final Region region, final Size scale)
             throws HttpErrorException {
+        // Lots of equations, so extract simple local names for our inputs
         final int ih = imageInfo.getHeight();
         final int iw = imageInfo.getWidth();
-        final int maxLevels = imageInfo.getLevels();
-        final int sh = scale.getHeight(); // with OpenSeaDragon, is always -1. Already guaranteed both are not -1.
-        final int sw = scale.getWidth();
-        final int x = region.getX(); // all Region fields already guaranteed positive if region!="full"
-        final int y = region.getY();
+        final int il = imageInfo.getLevels();
+
+        final int rx = region.getX(); // all Region fields already guaranteed positive if region!="full"
+        final int ry = region.getY();
         final int rh = region.getHeight();
         final int rw = region.getWidth();
+
+        final int sh = scale.getHeight(); // with OpenSeaDragon, is always -1.
+        final int sw = scale.getWidth(); // if sh is -1, sw is already guaranteed to not be -1 if scale!="full"
+
+        // This is what we're here to find.
         int level;
 
         // pre-validations that apply when using levels
         if (sw > TILE_SIZE || sh > TILE_SIZE) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST, "max tile size is " + TILE_SIZE);
-        } else if (rw < iw-x && !isExactPowerOf2(rw)) {
+        } else if (rw < iw-rx && !isExactPowerOf2(rw)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "region width "+rw+" not a power of two and not limited by image edge");
-        } else if (rh < ih-y && !isExactPowerOf2(rh)) {
+        } else if (rh < ih-ry && !isExactPowerOf2(rh)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "region height "+rh+" not a power of two and not limited by image edge");
         }
@@ -472,18 +484,18 @@ public class ImageServlet extends HttpServlet implements Constants {
         int rs; // region square side length (if edges of image didn't interfere)
         int l; // sqrt(rs), which works like a psuedo-level. We convert to a real Djatoka "level" at the end.
 
-        if (rw < iw-x) { // if region width isn't against the edge, it is the full square width
+        if (rw < iw-rx) { // if region width isn't against the edge, it is the full square width
             rs=rw;
             l = log2(rs);
-        } else if (rh < ih-y) {  // if region height isn't against the edge, it is the full square height
+        } else if (rh < ih-ry) {  // if region height isn't against the edge, it is the full square height
             rs=rh;
             l = log2(rs);
         } else if (sw > 0 && sw < TILE_SIZE) { // if scale width is less than TILE_SIZE, can extract rs from its value
-            rs = TILE_SIZE*(iw-x)/sw; // sw = ceil[ TILE_SIZE * (iw-x) / rs ]  => rs = floor[ TILE_SIZE * (iw-x) / sw ]
+            rs = TILE_SIZE*(iw-rx)/sw; // sw = ceil[ TILE_SIZE * (iw-rx) / rs ]  => rs = floor[ TILE_SIZE * (iw-rx) / sw ]
             l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
             rs = 1<<l; // rs = 2^l
         } else if (sh > 0 && sh < TILE_SIZE) { // if scale height is less than TILE_SIZE, can extract rs from its value
-            rs = TILE_SIZE*(ih-y)/sh; // sh = ceil[ TILE_SIZE * (ih-y) / rs ]  => rs = floor[ TILE_SIZE * (ih-y) / sh ]
+            rs = TILE_SIZE*(ih-ry)/sh; // sh = ceil[ TILE_SIZE * (ih-ry) / rs ]  => rs = floor[ TILE_SIZE * (ih-ry) / sh ]
             l = log2(rs) + (isExactPowerOf2(rs)? 0 : 1); // l = log2(rs), +1 if rs wasn't an even power of 2
             rs = 1<<l; // rs = 2^l
         } else { // no exact boundary--just use the first one bigger than will fit in given source region
@@ -493,8 +505,8 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
 
         // At this point, we have rs = 2^l.
-        // In Djatoka-world, rs = TILESIZE * 2^(maxLevels -level) == 2^(maxLevels -level +log2(TILESIZE)). So solve for "level".
-        level = maxLevels + TILE_LOG2 - l;
+        // In Djatoka-world, rs = TILESIZE * 2^(il -level) == 2^(il -level +log2(TILESIZE)). So solve for "level".
+        level = il + TILE_LOG2 - l;
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Level calculated: rs="+rs+", l="+l+", level="+level);
         }
@@ -510,32 +522,32 @@ public class ImageServlet extends HttpServlet implements Constants {
         }
 
         // calculate what both scale dimensions should be, even if they are given as -1 for default.
-        final int explicitSh = Math.min(Math.round((float)(TILE_SIZE*(ih-y))/(float)rs),TILE_SIZE);
-        final int explicitSw = Math.min(Math.round((float)(TILE_SIZE*(iw-x))/(float)rs),TILE_SIZE);
+        final int explicitSh = Math.min(Math.round((float)(TILE_SIZE*(ih-ry))/(float)rs),TILE_SIZE);
+        final int explicitSw = Math.min(Math.round((float)(TILE_SIZE*(iw-rx))/(float)rs),TILE_SIZE);
 
         // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
         // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
-        if (level > maxLevels) {
+        if (level > il) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region and scale correspond to zoom level "+level+" above this image's max of "+maxLevels);
-        } else if (x % rs != 0 || y % rs != 0) {
+                    "region and scale correspond to zoom level "+level+" above this image's max of "+il);
+        } else if (rx % rs != 0 || ry % rs != 0) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region x and y coords "+x+","+y+" must fall evenly on boundary of "+rs+" when zoom level is"+level);
-        } else if (rh != Math.min(ih-y, rs)) {
+                    "region rx and ry coords "+rx+","+ry+" must fall evenly on boundary of "+rs+" when zoom level is"+level);
+        } else if (rh != Math.min(ih-ry, rs)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region height "+rh+" should be "+Math.min(ih-y, rs)+" when region size is "+rs
-                    +" and bottom edge is "+Integer.toString(ih-y)+" away");
-        } else if (rw != Math.min(iw-x, rs)) {
+                    "region height "+rh+" should be "+Math.min(ih-ry, rs)+" when region size is "+rs
+                    +" and bottom edge is "+Integer.toString(ih - ry)+" away");
+        } else if (rw != Math.min(iw-rx, rs)) {
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
-                    "region width "+rw+" should be "+Math.min(iw-x, rs)+" when region size is "+rs
-                     +" and right edge is "+Integer.toString(iw-x)+" away");
+                    "region width "+rw+" should be "+Math.min(iw-rx, rs)+" when region size is "+rs
+                     +" and right edge is "+Integer.toString(iw - rx)+" away");
         } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely--only at level < 1—-OSD rounds up when should dn.
-            final float raw = (float)(TILE_SIZE*(ih-y))/(float)rs;
+            final float raw = (float)(TILE_SIZE*(ih-ry))/(float)rs;
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         } else if (sw != -1 && Math.abs(explicitSw - sw) > 1) {
-            final float raw = (float)(TILE_SIZE*(iw-x))/(float)rs;
+            final float raw = (float)(TILE_SIZE*(iw-rx))/(float)rs;
             throw new HttpErrorException(HttpServletResponse.SC_BAD_REQUEST,
                     "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
