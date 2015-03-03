@@ -64,13 +64,16 @@
                 display = 'Viewing '+images[start]; // TODO show this, and more info, links, breadcrumbs, etc.
             }
 		}
-		
+
+		var touch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+
 		OpenSeadragon({
 			id:'viewer',
 			prefixUrl:directory+'new/images/',
 			preserveViewport:true,
 			initialPage:start,
 			showNavigator:true,
+			showNavigationControl:!touch,
 			showRotationControl:true,
 			tileSources:tileSources,
 			maxZoomPixelRatio:1,
