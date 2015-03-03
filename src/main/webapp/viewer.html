@@ -1,64 +1,85 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
-    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" >
+<head>
 
- <head>
-  <meta name="author" content="Ruven Pillay &lt;ruven@users.sourceforge.netm&gt;"/>
-  <meta name="author" content="Ryan Chute &lt;rchute@users.sourceforge.netm&gt;"/>
-  <meta name="keywords" content="djatoka IIPImage Ajax IIP Zooming Streaming High Resolution Mootools"/>
-  <meta name="description" content="djatoka IIPImage Viewer: High Resolution Remote Image Streaming Viewing"/>
-  <meta name="copyright" content="&copy; 2003-2008 Ruven Pillay"/>
+<meta charset="utf-8">
+<meta name="author" content="http://kevinclarke.info">
+<meta name="author" content="sidb">
+<meta name="keywords" content="djatoka,jp2,jpeg2000">
+<meta name="description" content="Rice customizations of the FreeLib-Djatoka JPEG2000 image server">
 
-  <link rel="stylesheet" type="text/css" media="all" href="css/iip.compressed.css" />
-  <link rel="shortcut icon" href="images/djatoka.16x16.png" />
-  <title>djatoka Viewer, based on IIPMooViewer 1.1</title>
+<title>Image Viewer</title>
 
-  <script type="text/javascript" src="javascript/mootools-1.2-core-compressed.js"></script>
-  <script type="text/javascript" src="javascript/mootools-1.2-more-compressed.js"></script>
-  <script type="text/javascript" src="javascript/iipmooviewer-1.1.js"></script>
+<!-- Tile viewer - https://github.com/openseadragon/openseadragon -->
+<script src="./javascript/openseadragon.min.js"></script>
+<!-- URL parsing - https://github.com/allmarkedup/purl -->
+<script src="./javascript/purl.js"></script>
+<!-- Less essential JavaScripts can found at the bottom of the page -->
 
-  <script type="text/javascript">
+<!-- Last stylesheet has some OpenSeadragon specific styling -->
+<link href="./css/site.css" rel="stylesheet" />
 
-    // The iipsrv server path (/fcgi-bin/iipsrv.fcgi by default)
-    var server = '/jp2/resolver';
+<!-- Ye old HTML5 shim, for IE6-8 support of HTML5 elements -->
+<!--[if lt IE 9]>
+    <script src="https://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
 
-    // The *full* image path on the server. This path does *not* need to be in the web
-    // server root directory. On Windows, use Unix style forward slash paths without
-    // the "c:" prefix
-    //var images = 'http://memory.loc.gov/gmd/gmd433/g4330/g4330/np000066.jp2';
-    var images = 'info:lanl-repo/i/test';
-    // Copyright or information message
-    var credit = '';
-    
-    // Obtain URL Parameters if present
-    var query = location.href.substring(location.href.indexOf("?")+1);
-    var vars = query.split("&");
-    for (var i=0;i<vars.length;i++) {
-      var pair = vars[i].split("=");
-      if (pair[0] == "url" || pair[0] == "rft_id")
-         images = pair[1];
-         if (images.indexOf("#") > 0)
-           images = images.substring(0,images.length-1);
-    }
+</head>
 
-    // Create our viewer object - note: must assign this to the 'iip' variable.
-    // See documentation for more details of options
-    iip = new IIP( "targetframe", {
-		image: images,
-		server: server,
-		credit: credit, 
-		zoom: 1,
-		render: 'random',
-        showNavButtons: true
-    });
+<body style="background-color:#000;margin:0;padding:0">
+	<div style="position:fixed;width:100%;height:100%;margin:0;padding:0" id="viewer"></div>
+	<script type="text/javascript">
+		var url = purl();
+		var protocol = url.attr('protocol');
+		var host = url.attr('host');
+		var port = url.attr('port');
+        if (port) {
+            port = ':'+port;
+        }
+		var directory = url.attr('directory').split('new/')[0];
+		if (url.param('test')) {
+			protocol = 'http';
+			host = '127.0.0.1'; // cannot use 'localhost' bc something is stupid when using IPv6.
+			port = ':8888';
+		}
 
-  </script>
+		var tileSources = [];
 
- </head>
+		var remote = url.param('url');
+		if (remote != null) {
+			// old-style URL compatibility
+			// note: no longer insecure; server parses out handle and image, doesn't blindly follow
+			tileSources.push( protocol+'://'+host+port+directory+'iiif/'+remote+'/info.json' );
+		} else {
+			// new-style discrete parts, with possibility of multiple files
+			var handle = url.param('h');
+			var images = url.param('i');
+			var start = url.param('s') || 0;
+            var display = 'Error processng URL';
+            if (handle != null && images != null) {
+                images = images.split(',');
+                for (i=0; i<images.length; i++) {
+                    tileSources.push( protocol+'://'+host+port+directory+'iiif/'+handle+'/'+images[i]+'/info.json' );
+                }
+                display = 'Viewing '+images[start]; // TODO show this, and more info, links, breadcrumbs, etc.
+            }
+		}
 
- <body>
-   <div style="width:99%;height:99%;margin-left:auto;margin-right:auto" id="targetframe"></div>
- </body>
+		var touch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+
+		OpenSeadragon({
+			id:'viewer',
+			prefixUrl:directory+'new/images/',
+			preserveViewport:true,
+			initialPage:start,
+			showNavigator:true,
+			showNavigationControl:!touch,
+			showRotationControl:true,
+			tileSources:tileSources,
+			maxZoomPixelRatio:1,
+			animationTime:0.5
+		});
+	</script>
+</body>
 
 </html>
