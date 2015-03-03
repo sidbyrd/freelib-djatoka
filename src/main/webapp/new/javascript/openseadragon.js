@@ -1,6 +1,6 @@
 //! OpenSeadragon 1.2.1
 //! Built on 2015-03-02
-//! Git commit: v1.2.1-1-82af655
+//! Git commit: v1.2.1-1-82af655-dirty
 //! http://openseadragon.github.io
 //! License: http://openseadragon.github.io/license/
 
@@ -9831,7 +9831,7 @@ $.Navigator = function( options ){
             this.element.style.width  = typeof ( options.width )  == "number" ? ( options.width + 'px' ) : options.width;
         } else {
             viewerSize = $.getElementSize( viewer.element );
-            contentSize = viewer.viewport.contentSize.clone();
+            contentSize = viewer.viewport.contentSize;
             var navWide = viewerSize.x * options.sizeRatio;
             this.element.style.width  = Math.round( navWide ) + 'px';
             this.element.style.height = Math.round( navWide * contentSize.y / contentSize.x ) + 'px';
@@ -9921,7 +9921,7 @@ $.extend( $.Navigator.prototype, $.EventSource.prototype, $.Viewer.prototype, /*
 
         viewerSize = $.getElementSize( this.viewer.element );
 
-        contentSize = this.viewer.viewport.contentSize.clone();
+        contentSize = this.viewer.viewport.contentSize;
         if ( !viewerSize.equals( this.oldViewerSize ) || !contentSize.equals( this.oldContentSize ) ) {
             this.oldViewerSize = viewerSize;
             this.oldContentSize = contentSize;
