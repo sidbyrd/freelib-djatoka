@@ -249,15 +249,22 @@ public class ImageServlet extends HttpServlet implements Constants {
         if (pair.getKey().equals(HttpServletResponse.SC_OK)) {
             try {
                 serveJpgFile(pair.getValue(), aResponse);
+                if (recentTiles != null) {
+                    recentTiles.put(aRequest.getRequestURI(), pair);
+                }
             } catch (IIIFException e) {
                 LOGGER.warn("couldn't serve file "+pair.getValue()+" : "+e.getMessage());
                 aResponse.sendError(e.getHttpCode(), e.getHttpMessage());
+                // if serving cached filename failed, remove from cache.
+                if (recentTiles != null) {
+                    recentTiles.remove(pair);
+                }
             }
         } else {
             aResponse.sendError(pair.getKey(), pair.getValue());
-        }
-        if (recentTiles != null) {
-            recentTiles.put(aRequest.getRequestURI(), pair);
+            if (recentTiles != null) {
+                recentTiles.put(aRequest.getRequestURI(), pair);
+            }
         }
     }
 
@@ -968,8 +975,8 @@ public class ImageServlet extends HttpServlet implements Constants {
                     LOGGER.debug("Renaming cache file from {} to {}", cachedFile, aDestFile);
                 }
 
-                if (!cachedFile.renameTo(aDestFile) && LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Unable to move cache file: {}", cachedFile);
+                if (!cachedFile.renameTo(aDestFile) && LOGGER.isWarnEnabled()) {
+                    LOGGER.warn("Unable to move cache file: {}", cachedFile);
                 } else {
                     // This is the temp file cache used by the OpenURL layer
                     if (!OpenURLJP2KService.removeFromTileCache(cacheName) && LOGGER.isDebugEnabled()) {

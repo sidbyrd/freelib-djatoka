@@ -6,10 +6,8 @@ import java.util.AbstractMap;
 import java.util.Map;
 
 /**
- * Like a regular Exception, except for two things:
- * 1) it has a different type, and
- * 2) in addition to wrapping a message, it also wraps an HTTP response code.
- * Thrown when an error page, with the indication response code and message, needs to be served.
+ * Thrown when there's an error performing operations for serving an IIIF request.
+ * Includes the error code and error message to serve, as well as possibly extra detail for logging, etc.
  */
 public class IIIFException extends Exception {
 
