@@ -257,7 +257,7 @@ public class ImageServlet extends HttpServlet implements Constants {
                 aResponse.sendError(e.getHttpCode(), e.getHttpMessage());
                 // if serving cached filename failed, remove from cache.
                 if (recentTiles != null) {
-                    recentTiles.remove(pair);
+                    recentTiles.remove(aRequest.getRequestURI());
                 }
             }
         } else {
