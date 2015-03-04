@@ -20,7 +20,7 @@
   <entry key="OpenURLJP2KService.referentResolverImpl">info.freelibrary.djatoka.view.IdentifierResolver</entry>
   <entry key="OpenURLJP2KService.cacheEnabled">true</entry>
   <entry key="OpenURLJP2KService.scaleCacheExceptions">0.15 0.10 0.05</entry>
-  <entry key="OpenURLJP2KService.cacheTmpDir">/server/data/tomcat/temp/djatokacache</entry>
+  <entry key="OpenURLJP2KService.cacheTmpDir">/server/data/djatoka/tmp</entry>
   <entry key="OpenURLJP2KService.cacheSize">1000</entry>
   <entry key="OpenURLJP2KService.cacheImageMaxPixels">100000</entry>
   <entry key="jpeg_writer">gov.lanl.adore.djatoka.io.writer.JPGWriter</entry>
