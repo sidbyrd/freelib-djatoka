@@ -14,12 +14,13 @@ public class CacheUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(CacheUtils.class);
 
     /**
-     * Return a file name for the cached file based on its characteristics.
+     * Return a file name for the cached image tile based on its characteristics as visible to
+     * the Djatoka resolver servlet
      * 
-     * @param aLevel A level to be cached
-     * @param aRegion A region to be cached (inDjatoka order)
-     * @param aScale A scale to be cached (using non-Djatoka "0" for default values)
-     * @param aRotation A rotation to be cached
+     * @param aLevel the zoom level of the tile to cache (or <0 for not using level-based request)
+     * @param aRegion the region of the tile to cache (in Djatoka order)
+     * @param aScale the scale of the tile to cache (in Djatoka style)
+     * @param aRotation the rotation of the tile to cache
      * @return The file name for the cached file
      */
     public static String getFileName(final String aLevel, final String aRegion, final String aScale,
@@ -30,14 +31,14 @@ public class CacheUtils {
         final boolean hasLevel = !isEmpty(aLevel) && !aLevel.contains("-") && !aLevel.equals("0");
 
         if (hasLevel) {
-            // level and regionScale
+            // level and region/Scale
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Checking cache for level-oriented tile");
             }
 
             cfName.append(aLevel).append('_').append(region);
         } else {
-            // region and scale
+            // region and regular scale
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Checking cache for scale-oriented tile");
             }
