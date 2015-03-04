@@ -568,11 +568,11 @@ public class ImageServlet extends HttpServlet implements Constants {
             }
         }
 
-        // calculate what both scale dimensions should be, even if they are given as -1 for default.
+        // calculate what both scale dimensions should be, even if one was given as -1 for unconstrained.
         final int explicitSh = Math.min(Math.round((float)(TILE_SIZE*(ih-ry))/(float)rs),TILE_SIZE);
         final int explicitSw = Math.min(Math.round((float)(TILE_SIZE*(iw-rx))/(float)rs),TILE_SIZE);
 
-        // Validate that the request used standard power-if-two region and scale, so our level calculations were valid.
+        // Validate that the request used standard power-of-two region and scale, so our level calculations were valid.
         // Ensures that no tiles are generated (and cached forever!) at odd dimensions that we didn't intend to serve up.
         if (level > il) {
             throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_LEVEL_MAX,
@@ -588,19 +588,21 @@ public class ImageServlet extends HttpServlet implements Constants {
             throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_REGION_WIDTH,
                     "region width "+rw+" should be "+Math.min(iw-rx, rs)+" when region size is "+rs
                      +" and right edge is "+Integer.toString(iw - rx)+" away");
-        } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) { // rarely--only at level < 1—-OSD rounds up when should dn.
+        } else if (sh != -1 && Math.abs(explicitSh - sh) > 1) {
+            // rarely--I've only seen it at level <= 1—-OSD rounds up when should round down, so allow 1 margin before error
             final float raw = (float)(TILE_SIZE*(ih-ry))/(float)rs;
             throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_SCALED_HEIGHT,
                     "scaled height "+sh+" should be "+explicitSh+" when right edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         } else if (sw != -1 && Math.abs(explicitSw - sw) > 1) {
+            // rarely--I've only seen it at level <= 1—-OSD rounds up when should round down, so allow 1 margin before error
             final float raw = (float)(TILE_SIZE*(iw-rx))/(float)rs;
             throw new IIIFException(HttpServletResponse.SC_BAD_REQUEST, EM_SCALED_WIDTH,
                     "scaled width "+sw+" should be "+explicitSw+" when bottom edge is "+df.format(raw)
                     +" (~"+Math.round(raw)+" away after scaling)");
         }
 
-        // make scale dimensions explicit -- it's required when using level (and overwrites minor OSD rounding flaws)
+        // make scale dimensions explicit -- it's required by Djatoka when using level (and overwrites minor OSD rounding flaws)
         scale.setExplicit(explicitSw, explicitSh);
 
         return level;
