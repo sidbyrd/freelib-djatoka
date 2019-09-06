@@ -291,6 +291,9 @@ public class ImageServlet extends HttpServlet implements Constants {
             internalServer = getServer(aRequest);
         }
 
+        // Don't need session yet, but make sure it's at least created before anything could possibly be written to response.
+        final HttpSession session = aRequest.getSession();
+
         final IIIFRequest iiif = (IIIFRequest) aRequest.getAttribute(IIIFRequest.KEY);
 
 	    if (iiif == null) {
