@@ -4,9 +4,9 @@
   <entry key="djatoka.ingest.data.exts">tif,tiff</entry>
   <entry key="djatoka.ingest.data.dir">/dev/null</entry>
   <entry key="djatoka.ingest.file.maxSize">900</entry>
-  <entry key="djatoka.ingest.jp2.dir">/server/data/djatoka/jp2cache</entry>
+  <entry key="djatoka.ingest.jp2.dir">/ds/data/djatoka/jp2cache</entry>
   <entry key="djatoka.ingest.jp2.color.space">sRGB</entry>
-  <entry key="djatoka.view.cache.dir">/server/data/djatoka/tilecache</entry>
+  <entry key="djatoka.view.cache.dir">/ds/data/djatoka/tilecache</entry>
   <entry key="djatoka.view.format">image/jpeg</entry>
   <entry key="djatoka.view.format.ext">jpg</entry>
   <entry key="djatoka.server.internal">http://127.0.0.1:8080</entry>
@@ -20,7 +20,7 @@
   <entry key="OpenURLJP2KService.referentResolverImpl">info.freelibrary.djatoka.view.IdentifierResolver</entry>
   <entry key="OpenURLJP2KService.cacheEnabled">true</entry>
   <entry key="OpenURLJP2KService.scaleCacheExceptions">0.15 0.10 0.05</entry>
-  <entry key="OpenURLJP2KService.cacheTmpDir">/server/data/djatoka/tmp</entry>
+  <entry key="OpenURLJP2KService.cacheTmpDir">/ds/data/djatoka/tmp</entry>
   <entry key="OpenURLJP2KService.cacheSize">1000</entry>
   <entry key="OpenURLJP2KService.cacheImageMaxPixels">100000</entry>
   <entry key="jpeg_writer">gov.lanl.adore.djatoka.io.writer.JPGWriter</entry>
