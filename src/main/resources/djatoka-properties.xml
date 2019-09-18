@@ -14,7 +14,7 @@
   <entry key="iiif.require.levels">true</entry>
   <entry key="iiif.require.levels.min">-4</entry>
   <entry key="djatoka.ingest.id.validations">^(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)$
-		    ^http[s]?://(?:scholarship|dspace|dspacedev|dspacetest|fon-dss-dspace-prod-web).rice.edu/bitstream/handle/(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)*$</entry>
+		    ^http[s]?://(?:scholarship|scholarship-vpx|dspace|dspacedev|dspacetest|fon-dss-dspace-prod-web).rice.edu/bitstream/handle/(1911/[\d]+/[a-zA-Z0-9_\-]+(\.jp2|\.JP2)?)*$</entry>
   <entry key="djatoka.ingest.id.hosts">http://127.0.0.1:8080/bitstream/handle/{}</entry>
   <entry key="IdentifierResolver.checkDatabase">false</entry>
   <entry key="OpenURLJP2KService.referentResolverImpl">info.freelibrary.djatoka.view.IdentifierResolver</entry>
